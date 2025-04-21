@@ -16,9 +16,10 @@ spring:
     name: wavesend
   cloud:
     vault:
-      uri: ${VAULT_URI}
+      enabled: ${VAULT_ENABLED:false}
+      uri: ${VAULT_URI:http://localhost:8200}
       authentication: TOKEN
-      token: ${VAULT_TOKEN}
+      token: ${VAULT_TOKEN:root}
       kv:
         enabled: true
         backend: secret
