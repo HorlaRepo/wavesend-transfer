@@ -159,10 +159,11 @@ stripe:
 
 springdoc:
   default-produces-media-type: application/json
+  server-url: ${SPRINGDOC_SERVER_URL}
   api-docs:
-    enabled: false  # Disable API docs in production for security
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}  # Controllable via environment variable
   swagger-ui:
-    enabled: false  # Disable Swagger UI in production
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
 
 logging:
   level:

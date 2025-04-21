@@ -11,13 +11,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class KeycloakConfig {
 
-    @Value("${keycloak.client.id}")
+    @Value("${keycloak.client.id:admin-cli}")
     private String clientId;
-    @Value("${keycloak.client.secret}")
+    
+    @Value("${keycloak.client.secret:}")
     private String clientSecret;
-    @Value("${keycloak.server-url}")
+    
+    @Value("${keycloak.server-url:http://localhost:8080}")
     private String serverUrl;
-    @Value("${keycloak.realm}")
+    
+    @Value("${keycloak.realm:wavesend}")
     private String realm;
 
     @Bean
