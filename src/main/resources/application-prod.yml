@@ -199,6 +199,12 @@ keycloak:
     endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
     endpoint-url: ${KEYCLOAK_ENDPOINT_URL}
 
+  client:
+    id: ${KEYCLOAK_CLIENT_ID}
+    secret: ${KEYCLOAK_CLIENT_SECRET}
+    realm: ${KEYCLOAK_REALM}
+  server-url: ${KEYCLOAK_SERVER_URL}
+
 mailer-send:
   api-token: ${MAILER_SEND_API_TOKEN}
 

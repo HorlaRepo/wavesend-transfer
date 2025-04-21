@@ -3,7 +3,6 @@ package com.shizzy.moneytransfer.controller;
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.dto.OtpResendRequest;
 import com.shizzy.moneytransfer.service.OtpService;
-import com.shizzy.moneytransfer.serviceimpl.TwilioServiceImpl;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
