@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Transfer Failed</title>
+    <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            background-color: #d32f2f;
+            padding: 30px 0;
+            text-align: center;
+        }
+        .header-logo {
+            width: 150px;
+            height: auto;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 25px;
+            color: #555555;
+        }
+        .highlight-box {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .failed-icon {
+            font-size: 40px;
+            color: #d32f2f;
+            margin-bottom: 10px;
+        }
+        .highlight-text {
+            font-size: 22px;
+            font-weight: 700;
+            color: #d32f2f;
+        }
+        .amount-box {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+        .amount-label {
+            font-size: 14px;
+            color: #555555;
+            margin-bottom: 8px;
+        }
+        .amount-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #d32f2f;
+        }
+        .recipient-box {
+            margin-bottom: 25px;
+            background-color: #f7f9fc;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #d32f2f;
+        }
+        .recipient-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 5px;
+        }
+        .recipient-email {
+            font-size: 14px;
+            color: #666666;
+        }
+        .transaction-details {
+            background-color: #f7f9fc;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e6e9f0;
+            padding-bottom: 10px;
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .detail-label {
+            font-size: 14px;
+            color: #666666;
+            font-weight: 500;
+            width: 40%;
+            padding-right: 15px;
+        }
+        .detail-value {
+            font-size: 14px;
+            color: #333333;
+            font-weight: 600;
+            width: 60%;
+            text-align: right;
+        }
+        .failed-badge {
+            display: inline-block;
+            background-color: #ffcdd2;
+            color: #b71c1c;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .notice-box {
+            background-color: #ffebee;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .notice-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #d32f2f;
+            margin-bottom: 10px;
+        }
+        .action-points {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+        .action-points li {
+            margin-bottom: 8px;
+            color: #555555;
+        }
+        .cta-button {
+            display: block;
+            background-color: #d32f2f;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 25px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 30px 0;
+            transition: background-color 0.2s;
+        }
+        .cta-button:hover {
+            background-color: #b71c1c;
+        }
+        .footer {
+            background-color: #f7f9fc;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666666;
+            font-size: 14px;
+            border-top: 1px solid #e6e9f0;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-icon {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background-color: #d32f2f;
+            border-radius: 50%;
+            margin: 0 5px;
+            text-align: center;
+            line-height: 32px;
+        }
+        .note {
+            font-size: 13px;
+            color: #888888;
+            margin-top: 15px;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 20px;
+            }
+            .amount-value {
+                font-size: 24px;
+            }
+            .transaction-details {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="http://img.mailinblue.com/9074439/images/67fe1cf61d39d_1744706806.png" alt="WaveSend Logo" class="header-logo">
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Hello {{sender_name}},</div>
+            
+            <div class="message">
+                We're writing to inform you that your scheduled transfer could not be completed. No funds have been deducted from your account.
+            </div>
+            
+            <div class="highlight-box">
+                <div class="failed-icon">!</div>
+                <div class="highlight-text">Transfer Failed</div>
+            </div>
+            
+            <div class="amount-box">
+                <div class="amount-label">Transfer Amount (Not Sent)</div>
+                <div class="amount-value">{{currency_symbol}}{{amount}}</div>
+            </div>
+            
+            <div class="recipient-box">
+                <div class="section-title">Intended Recipient</div>
+                <div class="recipient-name">{{receiver_name}}</div>
+                <div class="recipient-email">{{receiver_email}}</div>
+            </div>
+            
+            <div class="transaction-details">
+                <div class="section-title">Transfer Details</div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Transfer ID</div>
+                    <div class="detail-value">{{transfer_id}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Scheduled Date</div>
+                    <div class="detail-value">{{scheduled_date}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Failure Date</div>
+                    <div class="detail-value">{{failure_date}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Description</div>
+                    <div class="detail-value">{{description}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                        <span class="failed-badge">Failed</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="notice-box">
+                <div class="notice-title">What could have caused this?</div>
+                <ul class="action-points">
+                    <li>Insufficient funds in your account at the time of the transfer</li>
+                    <li>Account restrictions or limits</li>
+                    <li>Technical issues during processing</li>
+                    <li>Other security reasons</li>
+                </ul>
+            </div>
+            
+            <a href="{{dashboard_url}}" class="cta-button">Reschedule Transfer</a>
+            
+            <div class="message">
+                If you'd like to understand more about why this transfer failed or need assistance in rescheduling it, please contact our support team at support@wavesend.cc.
+            </div>
+            
+            <div class="message">
+                Thank you for choosing WaveSend for your money transfer needs!
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="social-links">
+                <a href="{{facebook_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968764.png" alt="Facebook" width="16" height="16">
+                </a>
+                <a href="{{twitter_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968958.png" alt="Twitter" width="16" height="16">
+                </a>
+                <a href="{{instagram_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/3955/3955024.png" alt="Instagram" width="16" height="16">
+                </a>
+            </div>
+            
+            <div>
+                &copy; {{current_year}} WaveSend. All rights reserved.
+            </div>
+            
+            <div class="note">
+                This is an automated message, please do not reply directly to this email.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

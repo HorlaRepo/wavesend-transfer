@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaveSend Security Code</title>
+    <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary-color: #2fbe5f;
+            --primary-light: #e9f7ee;
+            --primary-dark: #25954a;
+            --text-dark: #1f2937;
+            --text-medium: #4b5563;
+            --text-light: #6b7280;
+            --background-light: #f9fafb;
+            --border-light: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-light);
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            padding: 28px;
+            text-align: center;
+        }
+
+        .header img {
+            height: 40px;
+        }
+
+        .content {
+            padding: 32px 24px;
+        }
+
+        .greeting {
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: var(--text-dark);
+        }
+
+        .message {
+            font-size: 16px;
+            color: var(--text-medium);
+            margin-bottom: 28px;
+        }
+
+        .otp-container {
+            background: linear-gradient(145deg, var(--primary-light), #f0f9f3);
+            border-radius: 12px;
+            border: 1px solid var(--primary-light);
+            padding: 28px;
+            text-align: center;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+
+        .otp-code {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 6px;
+            color: var(--primary-color);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .operation-details {
+            background-color: #f8fafc;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 28px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-light);
+        }
+
+        .operation-title {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-dark);
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 12px;
+            position: relative;
+        }
+
+        .operation-title:after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -1px;
+            width: 60px;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .detail-card {
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+
+        .detail-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border-color: #d1d5db;
+        }
+
+        .detail-header {
+            background-color: #f9fafb;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .detail-icon {
+            color: var(--primary-color);
+            margin-right: 10px;
+            background-color: var(--primary-light);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .detail-value {
+            padding: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 15px;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .detail-value.amount {
+            color: #0f766e;
+            font-size: 16px;
+        }
+
+        .detail-value.email {
+            font-family: monospace;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .detail-value.date {
+            font-weight: 500;
+        }
+
+        .detail-card.recurring {
+            grid-column: span 2;
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+
+        .detail-card.recurring .detail-header {
+            background-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .detail-card.recurring .detail-icon {
+            background-color: white;
+        }
+
+        .detail-card.recurring .detail-value {
+            color: var(--primary-dark);
+            font-weight: 700;
+        }
+
+        .detail-value.recurrence {
+            text-align: center;
+        }
+
+
+        .warning {
+            font-size: 14px;
+            color: var(--text-medium);
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+        }
+
+        .expiry {
+            font-size: 14px;
+            color: var(--text-medium);
+            margin-bottom: 24px;
+            padding: 16px;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 12px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .social-links {
+            margin-bottom: 16px;
+        }
+
+        .social-icon {
+            display: inline-block;
+            margin: 0 8px;
+            width: 32px;
+            height: 32px;
+            background-color: #f3f4f6;
+            border-radius: 50%;
+            padding: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .social-icon:hover {
+            background-color: #e5e7eb;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-card.recurring {
+                grid-column: 1;
+            }
+
+            .operation-details {
+                padding: 18px;
+            }
+
+            .detail-header {
+                padding: 8px 12px;
+            }
+
+            .detail-value {
+                padding: 12px;
+            }
+
+            .detail-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="http://img.mailinblue.com/9074439/images/67fe1cf61d39d_1744706806.png" alt="WaveSend Logo">
+        </div>
+
+        <div class="content">
+            <h1 class="greeting">Security Verification</h1>
+
+            <p class="message">
+                To complete your <strong>{{operation}}</strong> on WaveSend, please use the verification code below.
+                This code will expire in <strong>{{validity}} minutes</strong>.
+            </p>
+
+            <div class="otp-container">
+                <div class="otp-code">{{otp}}</div>
+            </div>
+
+            <div class="operation-details">
+                <h2 class="operation-title">Operation Details</h2>
+
+                <div class="detail-grid">
+                    <!-- Operation Type -->
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Operation Type</div>
+                        </div>
+                        <div class="detail-value">{{operation}}</div>
+                    </div>
+
+                    <!-- Transaction Amount (if present) -->
+                    {{#if amount}}
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Transaction Amount</div>
+                        </div>
+                        <div class="detail-value amount">${{amount}}</div>
+                    </div>
+                    {{/if}}
+
+                    <!-- Recipient Name (if present) -->
+                    {{#if recipient}}
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Recipient</div>
+                        </div>
+                        <div class="detail-value">{{recipient}}</div>
+                    </div>
+                    {{/if}}
+
+                    <!-- Recipient Email (if present) -->
+                    {{#if recipient_email}}
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                                    </path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Email</div>
+                        </div>
+                        <div class="detail-value email">{{recipient_email}}</div>
+                    </div>
+                    {{/if}}
+
+                    <!-- Scheduled Date (if present) -->
+                    {{#if scheduled_date}}
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Scheduled For</div>
+                        </div>
+                        <div class="detail-value date">{{scheduled_date}}</div>
+                    </div>
+                    {{/if}}
+
+                    <!-- Request Time -->
+                    <div class="detail-card">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Request Time</div>
+                        </div>
+                        <div class="detail-value date">{{timestamp}}</div>
+                    </div>
+
+                    <!-- Recurring Schedule (if present) -->
+                    {{#if is_recurring}}
+                    <div class="detail-card recurring">
+                        <div class="detail-header">
+                            <div class="detail-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 3v6h-6l3-3a7 7 0 1 0-5 11.94">
+                                    </path>
+                                    <path d="M12 17l1.5-2"></path>
+                                    <path d="M20.5 17a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path>
+                                    <path d="M17 20.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path>
+                                    <path d="M17 17h1.5v1.5"></path>
+                                </svg>
+                            </div>
+                            <div class="detail-label">Recurring Schedule</div>
+                        </div>
+                        <div class="detail-value recurrence">{{recurrence_type}}</div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>Security Notice:</strong> Never share this code with anyone. WaveSend representatives will never
+                ask for your verification
+                code via phone, email, or message.
+            </div>
+
+            <p class="expiry">
+                <strong>Note:</strong> If you didn't request this code, please ignore this email or contact our support
+                team immediately at <strong>support@wavesend.cc</strong>.
+            </p>
+        </div>
+
+        <div class="footer">
+            <div class="social-links">
+                <a href="{{facebook_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968764.png" alt="Facebook" width="16"
+                        height="16">
+                </a>
+                <a href="{{twitter_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968958.png" alt="Twitter" width="16"
+                        height="16">
+                </a>
+                <a href="{{instagram_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/3955/3955024.png" alt="Instagram" width="16"
+                        height="16">
+                </a>
+            </div>
+            <p>
+                &copy; {{current_year}} WaveSend. All rights reserved.<br>
+                123 Main Street, Lagos, Nigeria
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,227 @@
+server:
+  port: 8080
+  error:
+    include-message: never  # Changed for security in production
+  servlet:
+    context-path: /api/v1/
+
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS}  # Use specific origins in production
+  allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  allowed-headers: "Authorization,Content-Type,X-Requested-With"
+  exposed-headers: "Authorization"
+
+spring:
+  application:
+    name: wavesend
+  cloud:
+    vault:
+      uri: ${VAULT_URI}
+      authentication: TOKEN
+      token: ${VAULT_TOKEN}
+      kv:
+        enabled: true
+        backend: secret
+        default-context: application
+        version: 2
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    repair-on-migrate: false  # More cautious in production
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    properties:
+      sasl.mechanism: PLAIN
+      sasl.jaas.config: >-
+        org.apache.kafka.common.security.plain.PlainLoginModule required 
+        username="$ConnectionString" 
+        password="${EVENT_HUB_CONNECTION_STRING}";
+      security.protocol: SASL_SSL
+    consumer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      group-id: notification_group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: 'com.shizzy.moneytransfer.dto'  # More restrictive in production
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    default-property-inclusion: NON_NULL
+    modules:
+      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        connectiontimeout: 5000
+        timeout: 3000
+        writetimeout: 5000
+        smtp:
+          starttls:
+            enable: true
+          trust: "${MAIL_HOST}"  # More restrictive in production
+          socketFactory:
+            port: 587
+            class: javax.net.ssl.SSLSocketFactory
+      auth: true
+    protocol: smtp
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Important: No schema updates in production
+    properties:
+      hibernate:
+        format_sql: false
+    show-sql: false
+    open-in-view: false  # Better performance in production
+
+  main:
+    web-application-type: servlet
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  codec:
+    max-in-memory-size: 10MB
+
+  cache:
+    type: redis
+    redis:
+      cache-null-values: true
+      time-to-live: 6000
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: true  # Added for production
+
+cache:
+  config:
+    entryTtl: 300  # Longer TTL in production
+    transactions:
+      entryTtl: 300
+    wallets:
+      entryTtl: 300
+    otp:
+      entryTtl: 60  # Keep short for security
+
+application:
+  mailing:
+    frontend:
+      activation-url: ${FRONTEND_URL}/activate-account
+      password-reset-url: ${FRONTEND_URL}/reset-password
+
+stripe:
+  api-key: ${STRIPE_API_KEY}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
+  success-url: ${FRONTEND_URL}/account/deposit-success
+  cancel-url: ${FRONTEND_URL}/account/deposit-failed
+
+springdoc:
+  default-produces-media-type: application/json
+  api-docs:
+    enabled: false  # Disable API docs in production for security
+  swagger-ui:
+    enabled: false  # Disable Swagger UI in production
+
+logging:
+  level:
+    root: WARN
+    com.shizzy.moneytransfer: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+
+flutterwave:
+  api:
+    key: ${FLUTTERWAVE_API_KEY}
+    live-key: ${FLUTTERWAVE_LIVE_KEY}
+    base-url: https://api.flutterwave.com/v3
+    secret-hash: ${FLUTTERWAVE_SECRET_HASH}
+
+paystack:
+  api:
+    key: ${PAYSTACK_API_KEY}
+    base-url: https://api.paystack.co
+
+twilio:
+  account:
+    sid: ${TWILIO_ACCOUNT_SID}
+  auth:
+    token: ${TWILIO_AUTH_TOKEN}
+  phone: ${TWILIO_PHONE}
+
+termii:
+  api:
+    base-url: https://v3.api.termii.com
+    api-key: ${TERMII_API_KEY}
+
+keycloak:
+  event-listener:
+    endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
+    endpoint-url: ${KEYCLOAK_ENDPOINT_URL}
+
+mailer-send:
+  api-token: ${MAILER_SEND_API_TOKEN}
+
+aws:
+  region: ${AWS_REGION}
+  s3:
+    buckets:
+      wavesend: ${AWS_S3_BUCKET_NAME}
+    url-expiration: 3600
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY}
+  api-url: https://openrouter.ai/api/v1/chat/completions
+  model: meta-llama/llama-4-maverick:free
+  max-tokens: 1000
+  temperature: 0.7
+
+app:
+  beneficiary:
+    low-balance-threshold: 1400.00
+    user-min-balance: 4000.00
+
+brevo:
+  api-key: ${BREVO_API_KEY}
+  deposit-template-id: 1
+  withdrawal-template-id: 2

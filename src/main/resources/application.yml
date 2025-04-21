@@ -1,0 +1,210 @@
+server:
+  port: 8080
+  error:
+    include-message: always
+  servlet:
+    context-path: /api/v1/
+
+cors:
+  allowed-origins: "*"
+  allowed-methods: "*"
+  allowed-headers: "*"
+  exposed-headers: "*"
+
+spring:
+  application:
+    name: wavesend
+  cloud:
+    vault:
+      uri: ${VAULT_URI}
+      authentication: TOKEN
+      token: ${VAULT_TOKEN}
+      kv:
+        enabled: true
+        backend: secret
+        default-context: application
+        version: 2
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    repair-on-migrate: true
+
+  devtools:
+    restart:
+      exclude: /db/migration/**
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}
+
+  kafka:
+    consumer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      group-id: notification_group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    default-property-inclusion: NON_NULL
+    modules:
+      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        connectiontimeout: 5000
+        timeout: 3000
+        writetimeout: 5000
+        smtp:
+          starttls:
+            enable: true
+          trust: "*"
+          socketFactory:
+            port: 587
+            class: javax.net.ssl.SSLSocketFactory
+      auth: true
+    protocol: smtp
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+    open-in-view: true
+  main:
+    web-application-type: servlet
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  codec:
+    max-in-memory-size: 10MB
+
+  cache:
+    type: redis
+    redis:
+      cache-null-values: true
+      time-to-live: 6000
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+cache:
+  config:
+    entryTtl: 60
+    transactions:
+      entryTtl: 60
+    wallets:
+      entryTtl: 60
+    otp:
+      entryTtl: 60
+
+application:
+  mailing:
+    frontend:
+      activation-url: http://localhost:4200/activate-account
+      password-reset-url: http://localhost:4200/reset-password
+
+stripe:
+  api-key: ${STRIPE_API_KEY}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
+  success-url: http://localhost:4200/account/deposit-success
+  cancel-url: http://localhost:4200/account/deposit-failed
+
+springdoc:
+  default-produces-media-type: application/json
+
+logging:
+  level:
+    com.shizzy.moneytransfer.service: INFO
+    org.springframework.vault: DEBUG
+    org.springframework.cloud.vault: DEBUG
+
+flutterwave:
+  api:
+    key: ${FLUTTERWAVE_API_KEY}
+    live-key: ${FLUTTERWAVE_LIVE_KEY}
+    base-url: https://api.flutterwave.com/v3
+    secret-hash: ${FLUTTERWAVE_SECRET_HASH}
+
+paystack:
+  api:
+    key: ${PAYSTACK_API_KEY}
+    base-url: https://api.paystack.co
+
+twilio:
+  account:
+    sid: ${TWILIO_ACCOUNT_SID}
+  auth:
+    token: ${TWILIO_AUTH_TOKEN}
+  phone: ${TWILIO_PHONE}
+
+termii:
+  api:
+    base-url: https://v3.api.termii.com
+    api-key: ${TERMII_API_KEY}
+
+keycloak:
+  event-listener:
+    endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
+    endpoint-url: https://6461-2c0f-2a80-73-f910-1c93-ce14-a073-58c2.ngrok-free.app
+
+mailer-send:
+  api-token: ${MAILER_SEND_API_TOKEN}
+
+aws:
+  region: ${AWS_REGION}
+  s3:
+    buckets:
+      wavesend: wavesend
+    url-expiration: 3600
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY}
+  api-url: https://openrouter.ai/api/v1/chat/completions
+  model: meta-llama/llama-4-maverick:free
+  max-tokens: 1000
+  temperature: 0.7
+
+app:
+  beneficiary:
+    low-balance-threshold: 1400.00
+    user-min-balance: 4000.00
+
+brevo:
+  api-key: ${BREVO_API_KEY}
+  deposit-template-id: 1
+  withdrawal-template-id: 2

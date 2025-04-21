@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Transfer Cancelled</title>
+    <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            background-color: #f57c00;
+            padding: 30px 0;
+            text-align: center;
+        }
+        .header-logo {
+            width: 150px;
+            height: auto;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 22px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 25px;
+            color: #555555;
+        }
+        .highlight-box {
+            background-color: #fff3e0;
+            border: 1px solid #ffe0b2;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .cancelled-icon {
+            font-size: 40px;
+            color: #f57c00;
+            margin-bottom: 10px;
+        }
+        .highlight-text {
+            font-size: 22px;
+            font-weight: 700;
+            color: #f57c00;
+        }
+        .amount-box {
+            background-color: #fff3e0;
+            border-left: 4px solid #f57c00;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+        .amount-label {
+            font-size: 14px;
+            color: #555555;
+            margin-bottom: 8px;
+        }
+        .amount-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #f57c00;
+        }
+        .recipient-box {
+            margin-bottom: 25px;
+            background-color: #f7f9fc;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #f57c00;
+        }
+        .recipient-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 5px;
+        }
+        .recipient-email {
+            font-size: 14px;
+            color: #666666;
+        }
+        .transaction-details {
+            background-color: #f7f9fc;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e6e9f0;
+            padding-bottom: 10px;
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .detail-label {
+            font-size: 14px;
+            color: #666666;
+            font-weight: 500;
+            width: 40%;
+            padding-right: 15px;
+        }
+        .detail-value {
+            font-size: 14px;
+            color: #333333;
+            font-weight: 600;
+            width: 60%;
+            text-align: right;
+        }
+        .cancelled-badge {
+            display: inline-block;
+            background-color: #ffe0b2;
+            color: #e65100;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .recurring-badge {
+            display: inline-block;
+            background-color: #fff3e0;
+            color: #f57c00;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .cta-button {
+            display: block;
+            background-color: #f57c00;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 25px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 30px 0;
+            transition: background-color 0.2s;
+        }
+        .cta-button:hover {
+            background-color: #e65100;
+        }
+        .footer {
+            background-color: #f7f9fc;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666666;
+            font-size: 14px;
+            border-top: 1px solid #e6e9f0;
+        }
+        .social-links {
+            margin: 20px 0;
+        }
+        .social-icon {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            background-color: #f57c00;
+            border-radius: 50%;
+            margin: 0 5px;
+            text-align: center;
+            line-height: 32px;
+        }
+        .note {
+            font-size: 13px;
+            color: #888888;
+            margin-top: 15px;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 20px;
+            }
+            .amount-value {
+                font-size: 24px;
+            }
+            .transaction-details {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <img src="http://img.mailinblue.com/9074439/images/67fe1cf61d39d_1744706806.png" alt="WaveSend Logo" class="header-logo">
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Hello {{sender_name}},</div>
+            
+            <div class="message">
+                Your scheduled money transfer has been cancelled as requested. No funds have been transferred.
+            </div>
+            
+            <div class="highlight-box">
+                <div class="cancelled-icon">✕</div>
+                <div class="highlight-text">Transfer Cancelled</div>
+            </div>
+            
+            <div class="amount-box">
+                <div class="amount-label">Transfer Amount (Not Sent)</div>
+                <div class="amount-value">{{currency_symbol}}{{amount}}</div>
+            </div>
+            
+            <div class="recipient-box">
+                <div class="section-title">Intended Recipient</div>
+                <div class="recipient-name">{{receiver_name}}</div>
+                <div class="recipient-email">{{receiver_email}}</div>
+            </div>
+            
+            <div class="transaction-details">
+                <div class="section-title">Transfer Details</div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Transfer ID</div>
+                    <div class="detail-value">{{transfer_id}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Scheduled Date</div>
+                    <div class="detail-value">{{scheduled_date}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Cancellation Date</div>
+                    <div class="detail-value">{{cancellation_date}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Description</div>
+                    <div class="detail-value">{{description}}</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">
+                        <span class="cancelled-badge">Cancelled</span>
+                    </div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Recurrence</div>
+                    <div class="detail-value">
+                        {% if is_recurring %}
+                        <span class="recurring-badge">{{recurrence_type}}</span>
+                        {% else %}
+                        None (One-time)
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <a href="{{dashboard_url}}" class="cta-button">Schedule Another Transfer</a>
+            
+            <div class="message">
+                Thank you for choosing WaveSend for your money transfer needs!
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="social-links">
+                <a href="{{facebook_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968764.png" alt="Facebook" width="16" height="16">
+                </a>
+                <a href="{{twitter_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/5968/5968958.png" alt="Twitter" width="16" height="16">
+                </a>
+                <a href="{{instagram_url}}" class="social-icon">
+                    <img src="https://cdn-icons-png.flaticon.com/128/3955/3955024.png" alt="Instagram" width="16" height="16">
+                </a>
+            </div>
+            
+            <div>
+                &copy; {{current_year}} WaveSend. All rights reserved.
+            </div>
+            
+            <div class="note">
+                This is an automated message, please do not reply directly to this email.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
