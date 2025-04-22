@@ -132,7 +132,9 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
       ssl:
-        enabled: true  # Added for production
+        enabled: true
+      timeout: 600  # Added for production
+      enabled: true
 
 cache:
   config:

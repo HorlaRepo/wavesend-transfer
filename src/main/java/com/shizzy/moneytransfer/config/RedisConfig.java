@@ -4,6 +4,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.shizzy.moneytransfer.util.CacheNames;
+
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SocketOptions;
+import io.lettuce.core.TimeoutOptions;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.cache.RedisCacheManagerBuilderCustomizer;
@@ -46,6 +51,9 @@ public class RedisConfig {
         @Value("${spring.data.redis.port:6379}")
         private int redisPort;
 
+        @Value("${spring.data.redis.password:}")
+        private String redisPassword;
+
         @Value("${cache.config.entryTtl:60}")
         private int entryTtl;
 
@@ -58,20 +66,47 @@ public class RedisConfig {
         @Value("${cache.config.otp.entryTtl:60}")
         private int otpCacheTtl;
 
+        @Value("${spring.data.redis.ssl.enabled:false}")
+        private boolean sslEnabled;
+
+        @Value("${spring.data.redis.timeout:2000}")
+        private int timeout;
+
         @Bean
         public LettuceConnectionFactory redisConnectionFactory() {
-                logger.info("Configuring Redis connection to {}:{}", redisHost, redisPort);
-                RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
-                configuration.setHostName(redisHost);
-                configuration.setPort(redisPort);
+                try {
+                        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+                        redisConfig.setHostName(redisHost);
+                        redisConfig.setPort(redisPort);
 
-                // Add connection timeout and retry settings
-                LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                                .commandTimeout(Duration.ofSeconds(2))
-                                .shutdownTimeout(Duration.ZERO)
-                                .build();
+                        if (redisPassword != null && !redisPassword.isEmpty()) {
+                                redisConfig.setPassword(redisPassword);
+                        }
 
-                return new LettuceConnectionFactory(configuration, clientConfig);
+                        SocketOptions socketOptions = SocketOptions.builder()
+                                        .connectTimeout(Duration.ofMillis(timeout))
+                                        .build();
+
+                        ClientOptions clientOptions = ClientOptions.builder()
+                                        .timeoutOptions(TimeoutOptions.enabled())
+                                        .socketOptions(socketOptions)
+                                        .build();
+
+                        LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration
+                                        .builder()
+                                        .commandTimeout(Duration.ofMillis(timeout))
+                                        .clientOptions(clientOptions);
+
+                        if (sslEnabled) {
+                                logger.info("Enabling SSL for Redis connection");
+                                clientConfigBuilder.useSsl();
+                        }
+
+                        return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
+                } catch (Exception e) {
+                        logger.error("Failed to configure Redis connection: {}", e.getMessage(), e);
+                        throw e;
+                }
         }
 
         @Bean

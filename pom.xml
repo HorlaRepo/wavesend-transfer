@@ -124,6 +124,17 @@
 			<version>3.2.1</version>
 		</dependency>
 
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-messaging-eventhubs</artifactId>
+			<version>5.15.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.azure</groupId>
+			<artifactId>azure-messaging-eventhubs-checkpointstore-blob</artifactId>
+			<version>1.16.0</version>
+		</dependency>
+
 		<!-- SuperCSV for CSV generation -->
 		<dependency>
 			<groupId>net.sf.supercsv</groupId>
@@ -182,6 +193,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
+			<version>42.7.2</version>
 			<scope>runtime</scope>
 		</dependency>
 
