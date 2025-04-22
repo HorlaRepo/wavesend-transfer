@@ -12,6 +12,8 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -29,10 +31,12 @@ public class BaseEntity {
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdDate;
 
     @LastModifiedDate
     @Column(insertable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime lastModifiedDate;
 
     @CreatedBy

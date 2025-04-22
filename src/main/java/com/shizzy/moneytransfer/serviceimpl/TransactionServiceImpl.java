@@ -376,6 +376,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "transactionId"));
         Page<Transaction> transactions = transactionRepository.findTransactionsByWallet(wallet, pageable);
+        log.info("Fetched {} transactions for wallet ID: {}", transactions.getTotalElements(), walletId);
 
         List<TransactionResponse> transactionResponses = transactions.getContent().stream()
                 .map(this::mapToTransactionResponse)

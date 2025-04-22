@@ -9,4 +9,6 @@ public interface KeycloakService {
     UserRepresentation getUserByEmail(String email);
     String getUserFullName(String email);
     String getUserId(String email);
+    ApiResponse<Void> resetPassword(String userId, String newPassword);
+    ApiResponse<Void> sendPasswordResetEmail(String email);
 }

@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.dto.PageResponse;
+import com.shizzy.moneytransfer.dto.PendingScheduledTransfer;
 import com.shizzy.moneytransfer.dto.ScheduledTransferInitiationResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferNotification;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
@@ -117,40 +119,50 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     }
 
     @Override
-    @Cacheable(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail + ':page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize")
-    public ApiResponse<Page<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userId, Pageable pageable) {
+    @Cacheable(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userId + ':page:' + #pageable.pageNumber + ':size:' + #pageable.pageSize")
+    public ApiResponse<PageResponse<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userId,
+            Pageable pageable) {
         Page<ScheduledTransfer> transfersPage = scheduledTransferRepository
                 .findByCreatedByOrderByScheduledDateTimeDesc(userId, pageable);
 
         Page<ScheduledTransferResponseDTO> responseDTOsPage = transfersPage.map(this::mapToResponseDTO);
 
-        return ApiResponse.<Page<ScheduledTransferResponseDTO>>builder()
+        PageResponse<ScheduledTransferResponseDTO> pageResponse = PageResponse.from(responseDTOsPage);
+        log.info("🔍 Response page - Total elements: {}, Total pages: {}, Content size: {}",
+                pageResponse.getTotalElements(),
+                pageResponse.getTotalPages(),
+                pageResponse.getContent().size());
+
+        return ApiResponse.<PageResponse<ScheduledTransferResponseDTO>>builder()
                 .success(true)
                 .message("Scheduled transfers retrieved successfully")
-                .data(responseDTOsPage)
+                .data(pageResponse)
                 .build();
     }
 
     @Override
-    @Cacheable(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail")
+    @Cacheable(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userId")
     public ApiResponse<List<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userEmail) {
         // For backward compatibility, call paginated version with a large page size
-        Pageable pageable = PageRequest.of(0, 1000,
-                org.springframework.data.domain.Sort.by("scheduledDateTime").descending());
-        Page<ScheduledTransferResponseDTO> page = getUserScheduledTransfers(userEmail, pageable).getData();
-        return ApiResponse.<List<ScheduledTransferResponseDTO>>builder()
-                .success(true)
-                .message("Scheduled transfers retrieved successfully")
-                .data(page.getContent())
-                .build();
+        // Pageable pageable = PageRequest.of(0, 1000,
+        // org.springframework.data.domain.Sort.by("scheduledDateTime").descending());
+        // Page<ScheduledTransferResponseDTO> page =
+        // getUserScheduledTransfers(userEmail, pageable).getData();
+        // return ApiResponse.<List<ScheduledTransferResponseDTO>>builder()
+        // .success(true)
+        // .message("Scheduled transfers retrieved successfully")
+        // .data(page.getContent())
+        // .build();
+
+        throw new UnsupportedOperationException("This method is deprecated. Please use the paginated version.");
     }
 
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail"),
-        @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#transferId"),
-        @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#result.data.parentTransferId", condition = "#result != null && #result.data != null && #result.data.parentTransferId != null")
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userId"),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#transferId"),
+            @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#result.data.parentTransferId", condition = "#result != null && #result.data != null && #result.data.parentTransferId != null")
     })
     public ApiResponse<ScheduledTransferResponseDTO> cancelScheduledTransfer(Long transferId, String userId) {
 
@@ -214,9 +226,9 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail"),
-        @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#parentId"),
-        @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, allEntries = true)
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail"),
+            @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#parentId"),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, allEntries = true)
     })
     public ApiResponse<ScheduledTransferResponseDTO> cancelRecurringSeries(Long parentId, String userEmail) {
         // Find the parent transfer
@@ -251,9 +263,9 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail"),
-        @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#transferId"),
-        @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#result.data.parentTransferId", condition = "#result != null && #result.data != null && #result.data.parentTransferId != null")
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, key = "#userEmail"),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#transferId"),
+            @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#result.data.parentTransferId", condition = "#result != null && #result.data != null && #result.data.parentTransferId != null")
     })
     public ApiResponse<ScheduledTransferResponseDTO> updateRecurringTransfer(Long transferId,
             ScheduledTransferRequestDTO request, String userEmail) {
@@ -303,7 +315,7 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
                 .build();
     }
 
-    // Make this method public so it can be called by the Kafka consumer
+    //this method is public so it can be called by the Kafka consumer
     @Transactional
     public void scheduleNextOccurrenceIfNeeded(ScheduledTransfer currentTransfer) {
         // Check if we should continue recurring
@@ -568,11 +580,4 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
         }
     }
 
-    // Helper class to store pending scheduled transfers
-    @Data
-    @AllArgsConstructor
-    public static class PendingScheduledTransfer {
-        private final ScheduledTransferRequestDTO request;
-        private final String userId;
-    }
 }

@@ -1,5 +1,7 @@
 package com.shizzy.moneytransfer.dto;
 
+import java.io.Serializable;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -11,7 +13,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public  class WithdrawalMeta {
+public  class WithdrawalMeta implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String beneficiary_name;
     private String account_number;
     private String routing_number;

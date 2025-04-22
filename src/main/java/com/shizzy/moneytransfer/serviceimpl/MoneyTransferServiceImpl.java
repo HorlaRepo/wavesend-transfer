@@ -19,21 +19,26 @@ import com.shizzy.moneytransfer.service.MoneyTransferService;
 import com.shizzy.moneytransfer.service.OtpService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
@@ -42,10 +47,36 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final NotificationProducer notificationProducer;
     private final TransactionService transactionService;
     private final OtpService otpService;
-    private final CacheManager cacheManager;
 
+    // In-memory store for pending transfers
+    private final Map<String, PendingTransfer> pendingTransfers = new ConcurrentHashMap<>();
+    
+    // Constants
     private static final String TRANSFER_OPERATION = "Money Transfer";
-    private static final String PENDING_TRANSFERS_CACHE = "pendingTransfersCache";
+    private static final Duration TRANSFER_EXPIRY = Duration.ofMinutes(15);
+
+    // Inner class to track pending transfers with timestamps
+    private static class PendingTransfer {
+        private final CreateTransactionRequestBody requestBody;
+        private final LocalDateTime createdAt;
+
+        public PendingTransfer(CreateTransactionRequestBody requestBody) {
+            this.requestBody = requestBody;
+            this.createdAt = LocalDateTime.now();
+        }
+
+        public CreateTransactionRequestBody getRequestBody() {
+            return requestBody;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public boolean isExpired() {
+            return LocalDateTime.now().isAfter(createdAt.plus(TRANSFER_EXPIRY));
+        }
+    }
 
     @Override
     public ApiResponse<TransactionResponseDTO> transfer(CreateTransactionRequestBody requestBody) {
@@ -233,9 +264,9 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         // Generate unique token for this transfer request
         String transferToken = UUID.randomUUID().toString();
         
-        // Store pending transfer details
-        Cache pendingTransfersCache = cacheManager.getCache(PENDING_TRANSFERS_CACHE);
-        pendingTransfersCache.put(transferToken, requestBody);
+        // Store pending transfer in our in-memory map
+        pendingTransfers.put(transferToken, new PendingTransfer(requestBody));
+        log.info("Stored pending transfer with token: {}", transferToken);
         
         // Get recipient name for OTP email
         TransferInfo transferInfo = fetchSenderAndReceiverId(
@@ -245,6 +276,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         Map<String, Object> operationDetails = new HashMap<>();
         operationDetails.put("amount", requestBody.amount().toString());
         operationDetails.put("recipient", transferInfo.getReceiverName());
+        operationDetails.put("recipient_email", requestBody.receiverEmail());
         
         // Send OTP
         otpService.sendOtp(
@@ -270,6 +302,8 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
             throw new IllegalArgumentException("User not found");
         }
         
+        log.info("Verifying transfer request with token: {}", request.getTransferToken());
+        
         // Verify OTP
         Map<String, Object> operationDetails = otpService.verifyOtp(
             user.getEmail(),
@@ -278,25 +312,52 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         );
         
         if (operationDetails == null) {
+            log.warn("Invalid or expired OTP for user: {}", user.getEmail());
             throw new IllegalArgumentException("Invalid or expired verification code");
         }
         
-        // Retrieve pending transfer
-        Cache pendingTransfersCache = cacheManager.getCache(PENDING_TRANSFERS_CACHE);
-        CreateTransactionRequestBody requestBody = pendingTransfersCache.get(
-            request.getTransferToken(), 
-            CreateTransactionRequestBody.class
-        );
+        // Retrieve pending transfer from our in-memory map
+        PendingTransfer pendingTransfer = pendingTransfers.get(request.getTransferToken());
         
-        if (requestBody == null) {
+        if (pendingTransfer == null) {
+            log.warn("Transfer request not found for token: {}", request.getTransferToken());
             throw new IllegalArgumentException("Transfer request expired or not found");
         }
         
-        // Clean up cache
-        pendingTransfersCache.evict(request.getTransferToken());
+        // Check if transfer request is expired
+        if (pendingTransfer.isExpired()) {
+            log.warn("Transfer request expired for token: {}", request.getTransferToken());
+            pendingTransfers.remove(request.getTransferToken());
+            throw new IllegalArgumentException("Transfer request expired");
+        }
+        
+        CreateTransactionRequestBody requestBody = pendingTransfer.getRequestBody();
+        
+        // Clean up
+        pendingTransfers.remove(request.getTransferToken());
+        log.info("Removed pending transfer with token: {}", request.getTransferToken());
         
         // Execute the actual transfer
         return transfer(requestBody);
     }
     
+    /**
+     * Scheduled task to clean up expired pending transfers
+     * Runs every 5 minutes
+     */
+    @Scheduled(fixedRate = 5 * 60 * 1000) // 5 minutes
+    public void cleanupExpiredTransfers() {
+        int removedCount = 0;
+        
+        for (Map.Entry<String, PendingTransfer> entry : pendingTransfers.entrySet()) {
+            if (entry.getValue().isExpired()) {
+                pendingTransfers.remove(entry.getKey());
+                removedCount++;
+            }
+        }
+        
+        if (removedCount > 0) {
+            log.info("Cleaned up {} expired pending transfers", removedCount);
+        }
+    }
 }

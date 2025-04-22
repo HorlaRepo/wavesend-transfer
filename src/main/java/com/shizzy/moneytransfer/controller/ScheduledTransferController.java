@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.dto.PageResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferInitiationResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
 import com.shizzy.moneytransfer.dto.ScheduledTransferResponseDTO;
@@ -69,7 +70,7 @@ public class ScheduledTransferController {
     }
     
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ScheduledTransferResponseDTO>>> getUserTransfers(
+    public ResponseEntity<ApiResponse<PageResponse<ScheduledTransferResponseDTO>>> getUserTransfers(
             Authentication principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -80,10 +81,8 @@ public class ScheduledTransferController {
         // Create pageable request with sorting
         Pageable pageable = createPageRequest(page, size, sort);
         
-        // Get user email to use as cache key
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
         
-        return ResponseEntity.ok(scheduledTransferService.getUserScheduledTransfers(userEmail, pageable));
+        return ResponseEntity.ok(scheduledTransferService.getUserScheduledTransfers(principal.getName(), pageable));
     }
     
     // Legacy endpoint for backward compatibility
@@ -103,10 +102,7 @@ public class ScheduledTransferController {
         
         log.debug("Canceling scheduled transfer {} for user: {}", id, principal.getName());
         
-        // Get user email to use as cache key
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
-        
-        return ResponseEntity.ok(scheduledTransferService.cancelScheduledTransfer(id, userEmail));
+        return ResponseEntity.ok(scheduledTransferService.cancelScheduledTransfer(id, principal.getName()));
     }
     
     @GetMapping("/recurring/{parentId}")
@@ -115,10 +111,7 @@ public class ScheduledTransferController {
         
         log.debug("Getting recurring series {} for user: {}", parentId, principal.getName());
         
-        // Get user email to use as cache key
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
-        
-        return ResponseEntity.ok(scheduledTransferService.getRecurringTransferSeries(parentId, userEmail));
+        return ResponseEntity.ok(scheduledTransferService.getRecurringTransferSeries(parentId, principal.getName()));
     }
     
     @DeleteMapping("/recurring/{parentId}")
@@ -127,10 +120,7 @@ public class ScheduledTransferController {
         
         log.debug("Canceling recurring series {} for user: {}", parentId, principal.getName());
         
-        // Get user email to use as cache key
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
-        
-        return ResponseEntity.ok(scheduledTransferService.cancelRecurringSeries(parentId, userEmail));
+        return ResponseEntity.ok(scheduledTransferService.cancelRecurringSeries(parentId, principal.getName()));
     }
     
     @PutMapping("/{id}")
@@ -153,7 +143,7 @@ public class ScheduledTransferController {
                 request.totalOccurrences()
         );
         
-        return ResponseEntity.ok(scheduledTransferService.updateRecurringTransfer(id, validatedRequest, userEmail));
+        return ResponseEntity.ok(scheduledTransferService.updateRecurringTransfer(id, validatedRequest, principal.getName()));
     }
     
     /**

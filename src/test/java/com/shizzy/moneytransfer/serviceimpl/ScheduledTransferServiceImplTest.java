@@ -25,6 +25,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.dto.PageResponse;
+import com.shizzy.moneytransfer.dto.PendingScheduledTransfer;
 import com.shizzy.moneytransfer.dto.ScheduledTransferInitiationResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferNotification;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
@@ -152,7 +154,7 @@ class ScheduledTransferServiceImplTest {
                 when(scheduledTransferRepository.findByCreatedByOrderByScheduledDateTimeDesc(userId, pageable))
                                 .thenReturn(page);
 
-                ApiResponse<Page<ScheduledTransferResponseDTO>> response = scheduledTransferService
+                ApiResponse<PageResponse<ScheduledTransferResponseDTO>> response = scheduledTransferService
                                 .getUserScheduledTransfers(userId, pageable);
 
                 assertTrue(response.isSuccess());
@@ -234,7 +236,7 @@ class ScheduledTransferServiceImplTest {
                                 new Cache.ValueWrapper() {
                                         @Override
                                         public Object get() {
-                                                return new ScheduledTransferServiceImpl.PendingScheduledTransfer(
+                                                return new PendingScheduledTransfer(
                                                                 requestDTO, userId);
                                         }
                                 });

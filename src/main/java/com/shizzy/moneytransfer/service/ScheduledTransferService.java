@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.dto.PageResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferInitiationResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
 import com.shizzy.moneytransfer.dto.ScheduledTransferResponseDTO;
@@ -23,7 +24,7 @@ public interface ScheduledTransferService {
             ScheduledTransferVerificationRequest request, String userId);
     
     // Updated method to support pagination
-    ApiResponse<Page<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userEmail, Pageable pageable);
+    ApiResponse<PageResponse<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userEmail, Pageable pageable);
     
     // Legacy method for backward compatibility
     ApiResponse<List<ScheduledTransferResponseDTO>> getUserScheduledTransfers(String userEmail);

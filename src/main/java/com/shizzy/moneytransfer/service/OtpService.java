@@ -4,30 +4,32 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.security.SecureRandom;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.dto.CreateTransactionRequestBody;
+import com.shizzy.moneytransfer.dto.OtpData;
 import com.shizzy.moneytransfer.dto.OtpResendRequest;
+import com.shizzy.moneytransfer.dto.PendingScheduledTransfer;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
 import com.shizzy.moneytransfer.dto.WithdrawalRequestMapper;
 import com.shizzy.moneytransfer.enums.EmailTemplateName;
 import com.shizzy.moneytransfer.enums.RecurrenceType;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.exception.UnauthorizedAccessException;
-import com.shizzy.moneytransfer.serviceimpl.ScheduledTransferServiceImpl.PendingScheduledTransfer;
 
 import jakarta.mail.MessagingException;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +40,10 @@ public class OtpService {
     private EmailService emailService;
     private final CacheManager cacheManager;
     private final KeycloakService keycloakService;
+    
+    // In-memory cache for OTPs - this will work better than trying to use Spring's cache
+    // for clean-up operations
+    private final Map<String, OtpData> otpStore = new ConcurrentHashMap<>();
 
     private static final int OTP_VALIDITY_MINUTES = 5;
     private static final int OTP_LENGTH = 6;
@@ -65,13 +71,8 @@ public class OtpService {
         String otp = generateOtp();
         String cacheKey = createCacheKey(userEmail, operation);
 
-        // Store OTP with expiry
-        Cache otpCache = cacheManager.getCache("otpCache");
-        if (otpCache == null) {
-            throw new RuntimeException("OTP cache not configured");
-        }
-
-        otpCache.put(cacheKey, new OtpData(otp, LocalDateTime.now(), operationDetails));
+        // Store OTP in our in-memory map
+        otpStore.put(cacheKey, new OtpData(otp, LocalDateTime.now(), operationDetails));
 
         // Send OTP via email
         Map<String, Object> templateData = new HashMap<>();
@@ -106,22 +107,13 @@ public class OtpService {
      */
     public Map<String, Object> verifyOtp(String userEmail, String operation, String providedOtp) {
         String cacheKey = createCacheKey(userEmail, operation);
-        Cache otpCache = cacheManager.getCache("otpCache");
-
-        if (otpCache == null) {
-            throw new RuntimeException("OTP cache not configured");
-        }
-
-        Cache.ValueWrapper wrapper = otpCache.get(cacheKey);
-        if (wrapper == null) {
-            log.warn("No OTP found or expired for user {} and operation {}", userEmail, operation);
-            return null; // No OTP found or expired
-        }
-
-        OtpData otpData = (OtpData) wrapper.get();
+        
+        // Get OTP data from our in-memory map
+        OtpData otpData = otpStore.get(cacheKey);
+        
         if (otpData == null) {
-            log.warn("Invalid OTP data format for user {} and operation {}", userEmail, operation);
-            return null;
+            log.warn("No OTP found for user {} and operation {}", userEmail, operation);
+            return null; // No OTP found
         }
 
         if (!otpData.getOtp().equals(providedOtp)) {
@@ -129,16 +121,16 @@ public class OtpService {
             return null; // Invalid OTP
         }
 
-        // Check if OTP is expired (manual expiry check)
+        // Check if OTP is expired
         if (LocalDateTime.now().isAfter(otpData.getCreatedAt().plusMinutes(OTP_VALIDITY_MINUTES))) {
-            otpCache.evict(cacheKey);
+            otpStore.remove(cacheKey);
             log.warn("OTP expired for user {} and operation {}", userEmail, operation);
             return null;
         }
 
         // Valid OTP - remove it after successful verification (single use)
         Map<String, Object> operationDetails = otpData.getOperationDetails();
-        otpCache.evict(cacheKey);
+        otpStore.remove(cacheKey);
         log.info("OTP verified successfully for user {} and operation {}", userEmail, operation);
         return operationDetails;
     }
@@ -197,7 +189,6 @@ public class OtpService {
         }
     }
 
-
     /**
      * Resend OTP for money transfer operation
      */
@@ -234,7 +225,6 @@ public class OtpService {
         log.info("Resent OTP for money transfer to {}", user.getEmail());
     }
 
-
     /**
      * Resend OTP for withdrawal operation
      */
@@ -263,8 +253,6 @@ public class OtpService {
         sendOtp(user.getEmail(), user.getFirstName(), WITHDRAWAL_OPERATION, operationDetails);
         log.info("Resent OTP for withdrawal to {}", user.getEmail());
     }
-
-
 
     /**
      * Resend OTP for scheduled transfer operation
@@ -309,10 +297,6 @@ public class OtpService {
         sendOtp(user.getEmail(), user.getFirstName(), SCHEDULE_TRANSFER_OPERATION, operationDetails);
         log.info("Resent OTP for scheduled transfer to {}", user.getEmail());
     }
-    
-
-
-
 
     /**
      * Create a unique cache key for user and operation
@@ -324,54 +308,27 @@ public class OtpService {
         
         return normalizedEmail + ":" + normalizedOperation;
     }
+    
     /**
      * Clear all expired OTPs from the cache
      * This method iterates through all entries and removes those that have expired
      */
     public void clearExpiredOtps() {
-        Cache otpCache = cacheManager.getCache("otpCache");
-        if (otpCache == null) {
-            log.warn("OTP cache not configured, skipping cleanup");
-            return;
-        }
-
-        // Get the native cache implementation
-        Object nativeCache = otpCache.getNativeCache();
-        if (!(nativeCache instanceof Map)) {
-            log.warn("Native cache is not a Map, cannot perform cleanup");
-            return;
-        }
-
-        Map<Object, Object> cacheMap = (Map<Object, Object>) nativeCache;
-
-        // Track keys to remove (avoid ConcurrentModificationException)
-        Set<Object> keysToRemove = new HashSet<>();
-
-        // Iterate through all entries
-        for (Map.Entry<Object, Object> entry : cacheMap.entrySet()) {
-            if (entry.getValue() instanceof Cache.ValueWrapper) {
-                Object value = ((Cache.ValueWrapper) entry.getValue()).get();
-
-                if (value instanceof OtpData) {
-                    OtpData otpData = (OtpData) value;
-
-                    // Check if OTP is expired
-                    if (LocalDateTime.now().isAfter(otpData.getCreatedAt().plusMinutes(OTP_VALIDITY_MINUTES))) {
-                        keysToRemove.add(entry.getKey());
-                    }
-                }
+        // No more Redis, we can directly iterate through our in-memory map
+        int count = 0;
+        
+        for (Map.Entry<String, OtpData> entry : otpStore.entrySet()) {
+            OtpData otpData = entry.getValue();
+            
+            // Check if OTP is expired
+            if (LocalDateTime.now().isAfter(otpData.getCreatedAt().plusMinutes(OTP_VALIDITY_MINUTES))) {
+                otpStore.remove(entry.getKey());
+                count++;
             }
         }
-
-        // Remove all expired entries
-        int count = 0;
-        for (Object key : keysToRemove) {
-            otpCache.evict(key);
-            count++;
-        }
-
+        
         if (count > 0) {
-            log.info("Cleared {} expired OTP entries from cache", count);
+            log.info("Cleared {} expired OTP entries from in-memory cache", count);
         } else {
             log.debug("No expired OTP entries found in cache");
         }
@@ -382,13 +339,9 @@ public class OtpService {
      */
     private void clearExistingOtp(String userEmail, String operation) {
         String cacheKey = createCacheKey(userEmail, operation);
-        Cache otpCache = cacheManager.getCache("otpCache");
-        if (otpCache != null) {
-            otpCache.evict(cacheKey);
-            log.debug("Cleared existing OTP for user {} and operation {}", userEmail, operation);
-        }
+        otpStore.remove(cacheKey);
+        log.debug("Cleared existing OTP for user {} and operation {}", userEmail, operation);
     }
-
 
     /**
      * Helper method to safely get a cache or throw exception
@@ -400,7 +353,6 @@ public class OtpService {
         }
         return cache;
     }
-
 
     /**
      * Helper to get recipient name
@@ -418,7 +370,6 @@ public class OtpService {
             return email.split("@")[0];
         }
     }
-
 
     /**
      * Helper to mask account number for security
@@ -438,12 +389,5 @@ public class OtpService {
         }
         
         return masked.append(lastFour).toString();
-    }
-
-    @Data
-    public static class OtpData {
-        private final String otp;
-        private final LocalDateTime createdAt;
-        private final Map<String, Object> operationDetails;
     }
 }

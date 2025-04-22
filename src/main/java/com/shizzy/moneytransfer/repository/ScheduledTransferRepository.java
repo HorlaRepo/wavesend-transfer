@@ -71,4 +71,6 @@ public interface ScheduledTransferRepository extends JpaRepository<ScheduledTran
             @Param("status") ScheduleStatus status,
             @Param("currentTime") LocalDateTime currentTime,
             Pageable pageable);
+
+    List<ScheduledTransfer> findByCreatedBy(String userId);
 }
