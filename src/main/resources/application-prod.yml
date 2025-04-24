@@ -5,11 +5,17 @@ server:
   servlet:
     context-path: /api/v1/
 
+# cors:
+#   allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}  # Use specific origins in production
+#   allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+#   allowed-headers: "Authorization,Content-Type,X-Requested-With"
+#   exposed-headers: "Authorization"
+
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}  # Use specific origins in production
-  allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
-  allowed-headers: "Authorization,Content-Type,X-Requested-With"
-  exposed-headers: "Authorization"
+  allowed-origins: "*"
+  allowed-methods: "*"
+  allowed-headers: "*"
+  exposed-headers: "*"
 
 spring:
   application:
