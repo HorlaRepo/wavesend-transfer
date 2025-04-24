@@ -179,6 +179,7 @@ logging:
     com.shizzy.moneytransfer: INFO
     org.springframework: WARN
     org.hibernate: WARN
+    org.springframework.web.cors: DEBUG
 
 flutterwave:
   api:
