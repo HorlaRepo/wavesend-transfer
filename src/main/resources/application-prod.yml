@@ -6,7 +6,7 @@ server:
     context-path: /api/v1/
 
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS}  # Use specific origins in production
+  allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}  # Use specific origins in production
   allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
   allowed-headers: "Authorization,Content-Type,X-Requested-With"
   exposed-headers: "Authorization"
