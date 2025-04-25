@@ -124,6 +124,12 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
             Pageable pageable) {
         Page<ScheduledTransfer> transfersPage = scheduledTransferRepository
                 .findByCreatedByOrderByScheduledDateTimeDesc(userId, pageable);
+                log.info("🔍 Scheduled transfers page - User ID: {}, Page number: {}, Page size: {}, Total elements: {}, Total pages: {}",
+                userId,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                transfersPage.getTotalElements(),
+                transfersPage.getTotalPages());
 
         Page<ScheduledTransferResponseDTO> responseDTOsPage = transfersPage.map(this::mapToResponseDTO);
 
