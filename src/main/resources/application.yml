@@ -152,6 +152,8 @@ logging:
     com.shizzy.moneytransfer.service: INFO
     org.springframework.vault: DEBUG
     org.springframework.cloud.vault: DEBUG
+    org.springframework.security: DEBUG
+    com.shizzy.moneytransfer.security: DEBUG 
 
 flutterwave:
   api:

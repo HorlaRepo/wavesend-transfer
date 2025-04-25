@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/keycloak")
+@RequestMapping("keycloak")
 public class KeycloakEventsController {
 
     private final WalletService walletService;
@@ -35,9 +35,9 @@ public class KeycloakEventsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid secret key");
         }
         log.info("Received event: {}", event);
-        walletService.createWallet(event);
+        //walletService.createWallet(event);
         log.info("Wallet created successfully");
-        userNotificationPreferencesService.setDefNotificationPreferences(event);
+        //userNotificationPreferencesService.setDefNotificationPreferences(event);
         return ResponseEntity.ok("Event received");
     }
 
