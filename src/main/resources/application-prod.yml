@@ -20,7 +20,7 @@ spring:
         secret:
           enabled: true
       credential:
-        managed-identity-enabled: true
+        managed-identity-enabled: false
         client-id: ${AZURE_CLIENT_ID}
         client-secret: ${AZURE_CLIENT_SECRET}
 
