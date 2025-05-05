@@ -5,32 +5,24 @@ server:
   servlet:
     context-path: /api/v1/
 
-# cors:
-#   allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}  # Use specific origins in production
-#   allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
-#   allowed-headers: "Authorization,Content-Type,X-Requested-With"
-#   exposed-headers: "Authorization"
-
 cors:
-  allowed-origins: "*"
-  allowed-methods: "*"
-  allowed-headers: "*"
-  exposed-headers: "*"
+  allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}
+  allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  allowed-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers"
+  exposed-headers: "Authorization"
 
 spring:
   application:
     name: wavesend
   cloud:
-    vault:
-      enabled: ${VAULT_ENABLED:false}
-      uri: ${VAULT_URI:http://localhost:8200}
-      authentication: TOKEN
-      token: ${VAULT_TOKEN:root}
-      kv:
-        enabled: true
-        backend: secret
-        default-context: application
-        version: 2
+    azure:
+      keyvault:
+        secret:
+          enabled: true
+      credential:
+        managed-identity-enabled: true
+        client-id: ${AZURE_CLIENT_ID}
+        client-secret: ${AZURE_CLIENT_SECRET}
 
   datasource:
     url: ${DB_URL}
@@ -46,7 +38,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    repair-on-migrate: false  # More cautious in production
+    repair-on-migrate: false 
 
   security:
     oauth2:
@@ -70,7 +62,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       auto-offset-reset: earliest
       properties:
-        spring.json.trusted.packages: 'com.shizzy.moneytransfer.dto'  # More restrictive in production
+        spring.json.trusted.packages: 'com.shizzy.moneytransfer.dto'
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
 
     producer:
@@ -150,7 +142,7 @@ cache:
     wallets:
       entryTtl: 300
     otp:
-      entryTtl: 60  # Keep short for security
+      entryTtl: 60
 
 application:
   mailing:
@@ -180,6 +172,8 @@ logging:
     org.springframework: WARN
     org.hibernate: WARN
     org.springframework.web.cors: DEBUG
+    com.azure.security.keyvault: DEBUG
+    com.azure.identity: DEBUG
 
 flutterwave:
   api:

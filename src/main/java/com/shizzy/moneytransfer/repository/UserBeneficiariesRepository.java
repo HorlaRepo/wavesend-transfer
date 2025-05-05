@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -15,4 +16,7 @@ public interface UserBeneficiariesRepository extends JpaRepository<UserBeneficia
 
     @Query("SELECT ub FROM UserBeneficiaries ub LEFT JOIN FETCH ub.beneficiaries WHERE ub.userId = :userId")
     Optional<UserBeneficiaries> findByIdWithBeneficiaries(String userId);
+
+    @Query("SELECT ub FROM UserBeneficiaries ub LEFT JOIN FETCH ub.beneficiaries WHERE ub.userId = :userId")
+    List<UserBeneficiaries> findByUserIdWithBeneficiaries(@Param("userId") String userId);
 }

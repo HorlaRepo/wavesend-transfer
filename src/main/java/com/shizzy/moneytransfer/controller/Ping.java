@@ -1,8 +1,11 @@
 package com.shizzy.moneytransfer.controller;
 
+import com.shizzy.moneytransfer.config.KeyVaultSecretProvider;
 import com.shizzy.moneytransfer.model.Admin;
 import com.shizzy.moneytransfer.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -13,11 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 
-@RequiredArgsConstructor
 @RestController
 public class Ping {
 
     private final AdminRepository adminRepository;
+    private final KeyVaultSecretProvider secretProvider;
+    
+    public Ping(AdminRepository adminRepository, KeyVaultSecretProvider secretProvider) {
+        this.adminRepository = adminRepository;
+        this.secretProvider = secretProvider;
+    }
 
     @PreAuthorize("hasAnyAuthority('ADMIN','SUPER_ADMIN')")
     @GetMapping("/ping")
@@ -26,6 +34,16 @@ public class Ping {
             return "Welcome";
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @GetMapping("/test-keyvault")
+    public String testKeyVault() {
+        String awsAccessKey = secretProvider.getSecret("aws-access-key-id");
+        if (awsAccessKey != null && !awsAccessKey.isEmpty()) {
+            return "Successfully retrieved secret: " + awsAccessKey.substring(0, 5) + "...";
+        } else {
+            return "Could not retrieve secret from Key Vault";
         }
     }
 

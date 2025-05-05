@@ -6,6 +6,9 @@ import com.shizzy.moneytransfer.dto.TransferInfo;
 import com.shizzy.moneytransfer.enums.RefundStatus;
 import com.shizzy.moneytransfer.enums.TransactionStatus;
 import com.shizzy.moneytransfer.model.Transaction;
+import com.shizzy.moneytransfer.model.Wallet;
+import com.shizzy.moneytransfer.service.AccountLimitService;
+import com.shizzy.moneytransfer.service.TransactionLimitService;
 import com.shizzy.moneytransfer.service.TransactionService;
 import com.shizzy.moneytransfer.serviceimpl.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +20,12 @@ import java.math.BigDecimal;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class CheckoutCompletedHandler implements StripeEventHandler{
+public class CheckoutCompletedHandler implements StripeEventHandler {
 
     private final TransactionService transactionService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final AccountLimitService accountLimitService;
 
     @Override
     public boolean canHandle(String eventType) {
@@ -61,8 +65,10 @@ public class CheckoutCompletedHandler implements StripeEventHandler{
                 sessionId,
                 paymentIntent,
                 BigDecimal.valueOf(amountTotal),
-                RefundStatus.FULLY_REFUNDABLE
-        );
+                RefundStatus.FULLY_REFUNDABLE);
+
+        // Record the transaction for daily limit tracking
+        accountLimitService.recordTransaction(transaction.getWallet().getCreatedBy(), transaction.getAmount());
 
         // Send notification
         String customerEmail = objectNode.get("customer_details").get("email").asText();

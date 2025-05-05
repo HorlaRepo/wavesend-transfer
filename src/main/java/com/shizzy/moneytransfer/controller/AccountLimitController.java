@@ -11,7 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/account-limits")
+@RequestMapping("account-limits")
 @RequiredArgsConstructor
 public class AccountLimitController {
 
@@ -33,6 +33,7 @@ public class AccountLimitController {
         );
     }
     
+    
     /**
      * Get account limits for a specific verification level (admin only)
      */
@@ -51,6 +52,7 @@ public class AccountLimitController {
                 .build()
         );
     }
+
     
     /**
      * Update account limits for a specific verification level (admin only)
@@ -58,10 +60,26 @@ public class AccountLimitController {
     @PutMapping("/level/{level}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AccountLimitDTO>> updateLimitsForLevel(
-            @PathVariable("level") VerificationLevel level,
+            @PathVariable VerificationLevel level,
             @RequestBody AccountLimitDTO limitsDTO) {
             
         ApiResponse<AccountLimitDTO> response = accountLimitService.updateAccountLimits(level, limitsDTO);
         return ResponseEntity.ok(response);
+    }
+
+
+    /**
+     * Get current verification level (for display to user)
+     */
+    @GetMapping("/my-verification-level")
+    public ApiResponse<VerificationLevel> getMyVerificationLevel(Authentication authentication) {
+        String userId = authentication.getName();
+        VerificationLevel level = accountLimitService.getUserVerificationLevel(userId);
+        
+        return ApiResponse.<VerificationLevel>builder()
+                .success(true)
+                .message("Verification level retrieved successfully")
+                .data(level)
+                .build();
     }
 }

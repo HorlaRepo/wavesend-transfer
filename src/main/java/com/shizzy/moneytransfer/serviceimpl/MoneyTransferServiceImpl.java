@@ -6,17 +6,20 @@ import com.shizzy.moneytransfer.enums.RefundStatus;
 import com.shizzy.moneytransfer.enums.TransactionOperation;
 import com.shizzy.moneytransfer.enums.TransactionStatus;
 import com.shizzy.moneytransfer.enums.TransactionType;
+import com.shizzy.moneytransfer.exception.TransactionLimitExceededException;
 import com.shizzy.moneytransfer.kafka.NotificationProducer;
 import com.shizzy.moneytransfer.model.Transaction;
 import com.shizzy.moneytransfer.model.TransactionReference;
 import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
+import com.shizzy.moneytransfer.service.AccountLimitService;
 import com.shizzy.moneytransfer.service.KeycloakService;
 import com.shizzy.moneytransfer.service.TransactionReferenceService;
 import com.shizzy.moneytransfer.service.TransactionService;
 import com.shizzy.moneytransfer.service.WalletService;
 import com.shizzy.moneytransfer.service.MoneyTransferService;
 import com.shizzy.moneytransfer.service.OtpService;
+import com.shizzy.moneytransfer.service.TransactionLimitService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +50,8 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final NotificationProducer notificationProducer;
     private final TransactionService transactionService;
     private final OtpService otpService;
+    private final TransactionLimitService transactionLimitService;
+    private final AccountLimitService accountLimitService;
 
     // In-memory store for pending transfers
     private final Map<String, PendingTransfer> pendingTransfers = new ConcurrentHashMap<>();
@@ -90,6 +95,10 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         Wallet receivingWallet = walletService.findWalletOrThrow(transferInfo.getReceiverId());
         walletService.verifyWalletBalance(sendingWallet.getBalance(), requestBody.amount());
 
+        // Validate against transaction limits
+        transactionLimitService.validateTransfer(transferInfo.getSenderId(), requestBody.amount());
+        
+
         // Generate reference and process transaction
         String referenceNumber = referenceService.generateUniqueReferenceNumber();
         TransactionPair transactions = createTransactionPair(
@@ -103,6 +112,10 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         // Post-processing
         updateRefundableAmount(sendingWallet, requestBody.amount());
         sendTransferNotification(transferInfo, transactions);
+
+        // Record the transaction for daily limit tracking
+        accountLimitService.recordTransaction(transferInfo.getSenderId(), requestBody.amount());
+
 
         return buildSuccessResponse(transactions, sendingWallet, receivingWallet, referenceNumber);
     }
@@ -260,6 +273,43 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         if (!user.getEmail().equals(requestBody.senderEmail())) {
             throw new IllegalArgumentException("You can only transfer from your own account");
         }
+
+        // Pre-validate the transfer against account limits
+        try {
+            // Get sender and receiver information
+            TransferInfo transferInfo = fetchSenderAndReceiverId(
+                    requestBody.senderEmail(), requestBody.receiverEmail());
+                    
+            // Check if sender has sufficient balance
+            Wallet sendingWallet = walletService.findWalletOrThrow(transferInfo.getSenderId());
+            walletService.verifyWalletBalance(sendingWallet.getBalance(), requestBody.amount());
+            
+            // Validate against transfer limits
+            transactionLimitService.validateTransfer(userId, requestBody.amount());
+            
+            // Validate against daily transaction limits
+            if (accountLimitService.wouldExceedDailyLimit(userId, requestBody.amount())) {
+                throw new TransactionLimitExceededException(
+                    "This transfer would exceed your daily transaction limit"
+                );
+            }
+            
+            // Check if recipient wallet would exceed balance limit
+            Wallet receivingWallet = walletService.findWalletOrThrow(transferInfo.getReceiverId());
+            BigDecimal newReceiverBalance = receivingWallet.getBalance().add(requestBody.amount());
+            transactionLimitService.validateNewBalance(transferInfo.getReceiverId(), newReceiverBalance);
+            
+        } catch (TransactionLimitExceededException e) {
+            // Return friendly error for limit exceeded
+            return ApiResponse.<TransferInitiationResponse>builder()
+                .success(false)
+                .message(e.getMessage())
+                .build();
+        } catch (Exception e) {
+            // Log other errors but continue with OTP process for non-critical validations
+            log.warn("Pre-validation warning (will continue with OTP): {}", e.getMessage());
+        }
+        
         
         // Generate unique token for this transfer request
         String transferToken = UUID.randomUUID().toString();

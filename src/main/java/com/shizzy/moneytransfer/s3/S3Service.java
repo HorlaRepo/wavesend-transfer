@@ -12,7 +12,6 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -40,9 +39,8 @@ public class S3Service {
 
     private final S3Client s3Client;
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
-    private final String [] acceptedFileExtensions = {".pdf", ".doc", ".png", ".jpg", ".jpeg"};
-    private final String [] acceptedProfileImageExtensions = {".jpg", ".jpeg", ".png"};
-
+    private final String[] acceptedFileExtensions = { ".pdf", ".doc", ".png", ".jpg", ".jpeg" };
+    private final String[] acceptedProfileImageExtensions = { ".jpg", ".jpeg", ".png" };
 
     public void validateProfileImage(MultipartFile file) throws InvalidFileFormatException {
         String fileName = Objects.requireNonNull(file.getOriginalFilename()).toLowerCase();
@@ -63,7 +61,6 @@ public class S3Service {
         }
     }
 
-
     /**
      * Generate a pre-signed URL for the S3 object with specified expiration
      *
@@ -71,32 +68,30 @@ public class S3Service {
      * @return A pre-signed URL that can be used to access the file
      */
     public String generatePresignedUrl(String key) {
-        try (S3Presigner presigner = S3Presigner.builder()
-                .region(Region.of(region))
-                .build()) {
-                
+        try {
+            // Remove any existing query parameters from the key
+            final String finalKey = key.contains("?") ? key.substring(0, key.indexOf("?")) : key;
+
+            // Create S3Presigner with the same region as S3Client
+            S3Presigner presigner = S3Presigner.builder()
+                    .region(Region.of(region))
+                    .build();
+
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
                     .signatureDuration(Duration.ofSeconds(urlExpirationSeconds))
-                    .getObjectRequest(b -> b.bucket(bucketName).key(key))
+                    .getObjectRequest(b -> b.bucket(bucketName).key(finalKey))
                     .build();
-    
-            // Get the presigned URL and return it directly
+
+            // Get the presigned URL
             String presignedUrl = presigner.presignGetObject(presignRequest).url().toString();
-            log.debug("Generated presigned URL for key {}: {}", key, presignedUrl);
-            
+            log.debug("Generated presigned URL for key {}: {}", finalKey, presignedUrl);
+            presigner.close();
+
             return presignedUrl;
         } catch (Exception e) {
             log.error("Failed to generate presigned URL for key: {}", key, e);
-            // Fallback to direct URL if presigning fails
-            return generateDirectUrl(key);
+            throw new RuntimeException("Failed to generate access URL for file: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Generate a direct S3 URL without presigning (public access required)
-     */
-    private String generateDirectUrl(String key) {
-        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, key);
     }
 
     /**
@@ -127,18 +122,22 @@ public class S3Service {
 
     public String uploadFileToS3(@NotNull MultipartFile file, String key) {
         try {
+            // Ensure the key doesn't contain URL-encoded characters
+            String cleanKey = key.replaceAll("[^a-zA-Z0-9.\\-_/]", "_");
+
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
-                    .key(key)
-                    .acl(ObjectCannedACL.PUBLIC_READ)
+                    .key(cleanKey)
                     .contentType(file.getContentType())
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
-            return generateFileUrl(key);
+            return generateFileUrl(cleanKey);
         } catch (S3Exception e) {
-            throw new RuntimeException("Failed to upload file to S3 "+ e.getMessage(), e);
+            log.error("Failed to upload file to S3: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload file to S3: " + e.getMessage(), e);
         } catch (IOException e) {
+            log.error("Error reading file: {}", e.getMessage(), e);
             throw new RuntimeException("Error reading file", e);
         }
     }
@@ -151,7 +150,7 @@ public class S3Service {
                     .build();
 
             try (InputStream inputStream = s3Client.getObject(getObjectRequest);
-                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
 
                 byte[] buffer = new byte[1024];
                 int bytesRead;
@@ -171,20 +170,23 @@ public class S3Service {
         }
     }
 
-//    private String generateFileUrl(String key) {
-//        S3Presigner presigner = S3Presigner.builder().region(Region.of(region)).build();
-//        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-//                .signatureDuration(java.time.Duration.ofMinutes(60))
-//                .getObjectRequest(b -> b.bucket(bucketName).key(key))
-//                .build();
-//
-//        String presignedUrl = presigner.presignGetObject(presignRequest).url().toString();
-//        presigner.close();
-//
-//        return presignedUrl;
-//    }
+    // private String generateFileUrl(String key) {
+    // S3Presigner presigner =
+    // S3Presigner.builder().region(Region.of(region)).build();
+    // GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+    // .signatureDuration(java.time.Duration.ofMinutes(60))
+    // .getObjectRequest(b -> b.bucket(bucketName).key(key))
+    // .build();
+    //
+    // String presignedUrl =
+    // presigner.presignGetObject(presignRequest).url().toString();
+    // presigner.close();
+    //
+    // return presignedUrl;
+    // }
 
     // private String generateFileUrl(String key) {
-    //     return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, key);
+    // return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region,
+    // key);
     // }
 }

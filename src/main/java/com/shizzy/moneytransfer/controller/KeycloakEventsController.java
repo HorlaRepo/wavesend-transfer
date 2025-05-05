@@ -1,6 +1,7 @@
 package com.shizzy.moneytransfer.controller;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.service.AccountLimitAssignmentService;
 import com.shizzy.moneytransfer.service.KeycloakService;
 import com.shizzy.moneytransfer.service.UserNotificationPreferencesService;
 import com.shizzy.moneytransfer.service.WalletService;
@@ -21,6 +22,7 @@ public class KeycloakEventsController {
 
     private final WalletService walletService;
     private final UserNotificationPreferencesService userNotificationPreferencesService;
+    private final AccountLimitAssignmentService accountLimitAssignmentService;
 
     @Value("${keycloak.event-listener.endpoint-secret}")
     private String endpointSecret;
@@ -29,15 +31,23 @@ public class KeycloakEventsController {
     private static final Logger log = LoggerFactory.getLogger(KeycloakEventsController.class);
 
     @PostMapping("/events")
-    public ResponseEntity<String> receiveEvent(@RequestBody String event, @RequestHeader("Sig-Header") String sigHeader){
+    public ResponseEntity<String> receiveEvent(@RequestBody String event,
+            @RequestHeader("Sig-Header") String sigHeader) {
         if (!endpointSecret.equals(sigHeader)) {
             log.error("Invalid secret key");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid secret key");
         }
         log.info("Received event: {}", event);
-        //walletService.createWallet(event);
+        // Create wallet for new user
+        walletService.createWallet(event);
         log.info("Wallet created successfully");
-        //userNotificationPreferencesService.setDefNotificationPreferences(event);
+
+        // Set default notification preferences
+        userNotificationPreferencesService.setDefNotificationPreferences(event);
+
+        // Assign default account limits (EMAIL_VERIFIED level)
+        accountLimitAssignmentService.assignDefaultLimits(event);
+        log.info("Account limits assigned successfully");
         return ResponseEntity.ok("Event received");
     }
 

@@ -16,17 +16,30 @@ spring:
     name: wavesend
   cloud:
     vault:
-      uri: ${VAULT_URI}
-      authentication: TOKEN
-      token: ${VAULT_TOKEN}
-      kv:
-        enabled: true
-        backend: secret
-        default-context: application
-        version: 2
+      enabled: false
+      # enabled: ${VAULT_ENABLED:false}
+      # uri: ${VAULT_URI:http://localhost:8200}
+      # authentication: TOKEN
+      # token: ${VAULT_TOKEN:root}
+      # kv:
+      #   enabled: true
+      #   backend: secret
+      #   default-context: application
+      #   version: 2
+  
+    azure:
+      keyvault:
+        secret:
+          enabled: true
+      credential:
+        managed-identity-enabled: false
+        client-id: ${AZURE_CLIENT_ID}
+        client-secret: ${AZURE_CLIENT_SECRET}
+  
   config:
     import: optional:file:.env[.properties]
 
+  
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -150,8 +163,8 @@ springdoc:
 logging:
   level:
     com.shizzy.moneytransfer.service: INFO
-    org.springframework.vault: DEBUG
-    org.springframework.cloud.vault: DEBUG
+    # org.springframework.vault: DEBUG
+    # org.springframework.cloud.vault: DEBUG
     org.springframework.security: DEBUG
     com.shizzy.moneytransfer.security: DEBUG 
 
@@ -215,3 +228,8 @@ brevo:
   api-key: ${BREVO_API_KEY}
   deposit-template-id: 1
   withdrawal-template-id: 2
+
+
+gemini:
+  api-key: AIzaSyDGIbpL5VQmW1PAkA2xZfoBH_9g3xG4YVE
+  model: gemini-2.0-flash

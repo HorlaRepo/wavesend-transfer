@@ -327,4 +327,15 @@ public class DefaultExceptionHandler {
                 return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
 
+        @ExceptionHandler(TransactionLimitExceededException.class)
+        public ResponseEntity<ApiError> handleLimitExceededException(TransactionLimitExceededException ex, HttpServletRequest request) {
+                ApiError errorResponse = ApiError.builder()
+                                .path(request.getRequestURI())
+                                .message(ex.getMessage())
+                                .statusCode(HttpStatus.FORBIDDEN.value())
+                                .localDateTime(LocalDateTime.now())
+                                .build();
+                return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+        }
+
 }
