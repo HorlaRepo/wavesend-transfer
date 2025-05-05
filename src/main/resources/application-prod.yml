@@ -236,3 +236,7 @@ brevo:
   api-key: ${BREVO_API_KEY}
   deposit-template-id: 1
   withdrawal-template-id: 2
+
+gemini:
+  api-key: {GEMINI_API_KEY}
+  model: gemini-2.0-flash
