@@ -23,6 +23,8 @@ spring:
         managed-identity-enabled: false
         client-id: ${AZURE_CLIENT_ID}
         client-secret: ${AZURE_CLIENT_SECRET}
+      profile:
+        tenant-id: ${AZURE_TENANT_ID}
 
   datasource:
     url: ${DB_URL}
