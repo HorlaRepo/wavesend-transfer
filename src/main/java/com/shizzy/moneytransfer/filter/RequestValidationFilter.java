@@ -15,7 +15,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -29,19 +31,38 @@ public class RequestValidationFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
     
-    // Pattern to detect potential SQL injection attempts
+    // Pattern to detect potential SQL injection attempts - revised to avoid false positives
     private static final Pattern SQL_INJECTION_PATTERN = 
-            Pattern.compile("['\"\\\\;]|(--)|(/\\*)|(%27)|(\\)\\s+or)", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("(\\b(select|insert|update|delete|drop|alter)\\b.*\\b(from|into|table)\\b)|(--\\s)|(/\\*.*\\*/)|(\\bunion\\b.*\\bselect\\b)|(\\bor\\b\\s+\\d+=\\d+)|(\\bend\\b\\s*\\+)", Pattern.CASE_INSENSITIVE);
     
-    // Pattern to detect potential XSS attempts
+    // Pattern to detect potential XSS attempts - specific to script exploitation
     private static final Pattern XSS_PATTERN = 
-            Pattern.compile("<script|javascript:|on\\w+=", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("<script[^>]*>|javascript:|\\bonerror\\s*=|\\bonload\\s*=|\\bonclick\\s*=|\\beval\\s*\\(|document\\.cookie|document\\.location", Pattern.CASE_INSENSITIVE);
     
     // Paths that need protection - focus on financial transaction endpoints
     private static final List<String> PROTECTED_PATHS = List.of(
             "/transfer", "/withdraw", "/deposit", "/account", 
-            "/beneficiaries", "/scheduled-transfers", "/payment"
+            "/beneficiaries", "/scheduled-transfers", "/payment",
+            "/verification-level", "/kyc", "/verification", "/initiate",
+            "verify"
     );
+    
+    // Headers that commonly use semicolons and other characters in standard formats
+    private static final Set<String> WHITELISTED_HEADERS = new HashSet<>();
+    static {
+        WHITELISTED_HEADERS.add("accept-language");
+        WHITELISTED_HEADERS.add("accept");
+        WHITELISTED_HEADERS.add("accept-encoding");
+        WHITELISTED_HEADERS.add("content-type");
+        WHITELISTED_HEADERS.add("user-agent");
+        WHITELISTED_HEADERS.add("cookie");
+        WHITELISTED_HEADERS.add("authorization");
+        WHITELISTED_HEADERS.add("referer");
+        WHITELISTED_HEADERS.add("sec-fetch-dest");
+        WHITELISTED_HEADERS.add("sec-fetch-mode");
+        WHITELISTED_HEADERS.add("sec-fetch-site");
+        WHITELISTED_HEADERS.add("origin");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
@@ -54,7 +75,7 @@ public class RequestValidationFilter extends OncePerRequestFilter {
             // Check for potential SQL Injection or XSS attacks in parameters
             if (containsMaliciousContent(request)) {
                 log.warn("Potential attack detected from IP: {}, Path: {}", 
-                        request.getRemoteAddr(), path);
+                        request.getRemoteAddr() + ":" + request.getRemotePort(), path);
                 
                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -89,6 +110,7 @@ public class RequestValidationFilter extends OncePerRequestFilter {
      * @return true if potentially malicious content is detected
      */
     private boolean containsMaliciousContent(HttpServletRequest request) {
+        // Check query parameters
         Enumeration<String> paramNames = request.getParameterNames();
         
         while (paramNames.hasMoreElements()) {
@@ -108,13 +130,11 @@ public class RequestValidationFilter extends OncePerRequestFilter {
         // Also check request headers for common attack vectors
         Enumeration<String> headerNames = request.getHeaderNames();
         while (headerNames.hasMoreElements()) {
-            String headerName = headerNames.nextElement();
+            String headerName = headerNames.nextElement().toLowerCase();
             String headerValue = request.getHeader(headerName);
             
-            // Skip standard headers that might contain false positives
-            if (headerName.equalsIgnoreCase("cookie") || 
-                headerName.equalsIgnoreCase("authorization") ||
-                headerName.equalsIgnoreCase("user-agent")) {
+            // Skip whitelisted headers that commonly contain characters that trigger false positives
+            if (WHITELISTED_HEADERS.contains(headerName)) {
                 continue;
             }
             
