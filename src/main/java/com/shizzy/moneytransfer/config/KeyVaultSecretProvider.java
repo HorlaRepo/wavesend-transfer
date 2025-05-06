@@ -23,7 +23,7 @@ public class KeyVaultSecretProvider {
     @Value("${azure.keyvault.url:https://wavesend.vault.azure.net/}")
     private String keyVaultUrl;
 
-    private final SecretClient secretClient;
+    private  SecretClient secretClient;
     private final Map<String, String> secretCache = new HashMap<>();
 
     public KeyVaultSecretProvider() {
@@ -36,15 +36,23 @@ public class KeyVaultSecretProvider {
     @PostConstruct
     public void init() {
         try {
+            log.info("Initializing Azure Key Vault client with URL: {}", keyVaultUrl);
+            
+            // Create client with the injected URL, not hardcoded
+            this.secretClient = new SecretClientBuilder()
+                .vaultUrl(keyVaultUrl)
+                .credential(new DefaultAzureCredentialBuilder().build())
+                .buildClient();
+                
             // Pre-load common secrets
             loadSecret("aws-access-key-id");
             loadSecret("aws-secret-access-key");
             log.info("Successfully loaded secrets from Azure Key Vault");
         } catch (Exception e) {
-            log.error("Error loading secrets from Azure Key Vault: {}", e.getMessage(), e);
+            log.error("Error initializing Azure Key Vault client: {}", e.getMessage(), e);
         }
     }
-
+    
     private void loadSecret(String secretName) {
         try {
             KeyVaultSecret secret = secretClient.getSecret(secretName);
