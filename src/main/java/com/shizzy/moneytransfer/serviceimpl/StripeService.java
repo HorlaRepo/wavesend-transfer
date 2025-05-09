@@ -6,11 +6,16 @@ import com.google.gson.JsonSyntaxException;
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.api.GenericResponse;
 import com.shizzy.moneytransfer.dto.*;
+import com.shizzy.moneytransfer.enums.RefundImpactType;
+import com.shizzy.moneytransfer.enums.RefundStatus;
+import com.shizzy.moneytransfer.enums.TransactionOperation;
 import com.shizzy.moneytransfer.exception.PaymentException;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
+import com.shizzy.moneytransfer.model.RefundImpactRecord;
 import com.shizzy.moneytransfer.model.Transaction;
 import com.shizzy.moneytransfer.model.TransactionReference;
 import com.shizzy.moneytransfer.model.Wallet;
+import com.shizzy.moneytransfer.repository.RefundImpactRecordRepository;
 import com.shizzy.moneytransfer.repository.TransactionReferenceRepository;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
 import com.shizzy.moneytransfer.repository.WalletRepository;
@@ -57,13 +62,13 @@ public class StripeService implements PaymentService {
     private final StripePaymentProcessor paymentProcessor;
     private final StripeRefundService refundService;
     private final StripeWebhookService webhookService;
-    private final TransactionService transactionService;
     private final TransactionRepository transactionRepository;
     private final TransactionReferenceRepository referenceRepository;
     private final TransactionReferenceService referenceService;
     private final KeycloakService keycloakService;
     private final WalletRepository walletRepository;
     private final WalletService walletService;
+    private final RefundImpactRecordRepository refundImpactRecordRepository;
     private static final Logger LOGGER = LoggerFactory.getLogger(StripeService.class);
 
     @Override
@@ -99,94 +104,7 @@ public class StripeService implements PaymentService {
     @Override
     public ResponseEntity<String> handleWebhook(String payload) {
         return webhookService.handleWebhook(payload);
-//        Stripe.apiKey = stripeApiKey;
-//        Event event;
-//        try {
-//            event = ApiResource.GSON.fromJson(String.valueOf(payload), Event.class);
-//        } catch (JsonSyntaxException e) {
-//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-//        }
-//
-//        if ("checkout.session.completed".equals(event.getType())) {
-//            String jsonData = event.getData().toJson();
-//            System.out.println(jsonData);
-//            handleStripeDeposit(jsonData);
-//        }
-//
-//        if ("charge.refund.updated".equals(event.getType())) {
-//            try {
-//                handleRefundUpdate(payload);
-//            } catch (StripeException e) {
-//                LOGGER.error("Error processing stripe refund: {}", e.getMessage());
-//            }
-//        }
-//
-//        if("charge.refunded".equals(event.getType())) {
-//            try {
-//                handleSuccessfulRefund(payload);
-//            } catch (StripeException e) {
-//                LOGGER.error("Error processing stripe refund: {}", e.getMessage());
-//            }
-//        }
-//
-//        return ResponseEntity.ok("Success");
     }
-
-//    private void handleStripeDeposit(String jsonData) {
-//        try {
-//            ObjectMapper mapper = new ObjectMapper();
-//            JsonNode rootNode = mapper.readTree(jsonData);
-//            JsonNode objectNode = rootNode.get("object");
-//            String paymentStatus = objectNode.get("payment_status").asText();
-//
-//            if ("paid".equals(paymentStatus)) {
-//                double amountTotal = objectNode.get("amount_total").asLong() / 100.0;
-//                String sessionId = objectNode.get("id").asText();
-//                String transactionReference = objectNode.get("metadata").get("transactionReference").asText();
-//                String paymentIntent = objectNode.get("payment_intent").asText();
-//
-//                if (!transactionReference.isEmpty()) {
-//                    Transaction transaction = transactionRepository.findTransactionByReferenceNumber(transactionReference).get(0);
-//
-//                    if (transaction.getCurrentStatus().equals(SUCCESS.getValue())) {
-//                        return;
-//                    }
-//
-//                    if (transaction.getCurrentStatus().equals(PENDING.getValue())) {
-//                        transaction.setCurrentStatus(SUCCESS.getValue());
-//                        transaction.setSessionId(sessionId);
-//                        transaction.setRefundableAmount(BigDecimal.valueOf(amountTotal));
-//                        transaction.setRefundStatus(FULLY_REFUNDABLE);
-//                        transaction.setProviderId(paymentIntent);
-//
-//                        Wallet wallet = transaction.getWallet();
-//                        walletService.deposit(wallet, BigDecimal.valueOf(amountTotal));
-//
-//                        transactionRepository.save(transaction);
-//
-//                        String customerEmail = objectNode.get("customer_details").get("email").asText();
-//                        String customerName = objectNode.get("customer_details").get("name").asText();
-//
-//                        TransferInfo transferInfo = TransferInfo.builder()
-//                                .senderEmail(customerEmail)
-//                                .senderName(customerName)
-//                                .senderId(transaction.getWallet().getCreatedBy())
-//                                .build();
-//
-//                        TransactionNotification notification = TransactionNotification.builder()
-//                                .operation(DEPOSIT)
-//                                .creditTransaction(transaction)
-//                                .transferInfo(transferInfo)
-//                                .build();
-//
-//                        notificationProducer.sendNotification("notifications",notification);
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            LOGGER.error("Error processing stripe deposit: {}", e.getMessage());
-//        }
-//    }
 
     @Override
     @Transactional
@@ -226,8 +144,7 @@ public class StripeService implements PaymentService {
                     email,
                     BigDecimal.valueOf(amount),
                     transactionReference,
-                    userId
-            );
+                    userId);
 
             // Return payment response
             return paymentProcessor.generatePaymentResponse(session, transactionReference);
@@ -256,16 +173,24 @@ public class StripeService implements PaymentService {
             }
 
             BigDecimal refundAmount = transaction.getRefundableAmount();
+            log.info("Processing refund of {} for transaction ID: {}, reference: {}",
+                    refundAmount, transaction.getTransactionId(), transaction.getReferenceNumber());
 
-            // Update original transaction
+            // Update original transaction with optimistic locking to prevent race
+            // conditions
             transaction.setRefundableAmount(BigDecimal.ZERO);
-            transaction.setRefundStatus(NON_REFUNDABLE);
+            transaction.setRefundStatus(RefundStatus.NON_REFUNDABLE);
+            transaction.setRefundDate(LocalDateTime.now());
             transactionRepository.save(transaction);
+
+            // Create refund impact record
+            createRefundImpactRecord(transaction, refundAmount);
 
             // Create refund transaction
             Transaction refundTransaction = createRefundTransaction(transaction, refundAmount);
+            refundTransaction = transactionRepository.save(refundTransaction);
 
-            // Debit wallet
+            // Debit wallet with concurrency handling
             walletService.debit(transaction.getWallet(), refundAmount);
 
             // Process refund with Stripe
@@ -273,8 +198,9 @@ public class StripeService implements PaymentService {
                     refundRequest.paymentId(),
                     refundAmount,
                     String.valueOf(transaction.getTransactionId()),
-                    String.valueOf(refundTransaction.getTransactionId())
-            );
+                    String.valueOf(refundTransaction.getTransactionId()));
+
+            log.info("Refund successfully processed: {}", refund.getId());
 
             return ApiResponse.<String>builder()
                     .success(true)
@@ -286,7 +212,6 @@ public class StripeService implements PaymentService {
             throw new PaymentException("Failed to process refund: " + e.getMessage());
         }
     }
-
 
     private Transaction createRefundTransaction(Transaction transaction, BigDecimal refundAmount) {
         Transaction refundTransaction = Transaction.builder()
@@ -315,7 +240,7 @@ public class StripeService implements PaymentService {
         JSONObject jsonObject = new JSONObject(jsonData);
         Refund refund = Refund.retrieve(jsonObject.getString("id"));
 
-        if("failed".equals(refund.getStatus())) {
+        if ("failed".equals(refund.getStatus())) {
             final Transaction refundTransaction = updateFailedRefundTransaction(refund);
             updateDepositTransactionAfterFailedRefund(refund, refundTransaction);
         }
@@ -346,7 +271,8 @@ public class StripeService implements PaymentService {
     @NotNull
     private Transaction updateFailedRefundTransaction(Refund refund) {
 
-        Transaction refundTransaction = transactionRepository.findById(Integer.parseInt(refund.getMetadata().get("refundId")))
+        Transaction refundTransaction = transactionRepository
+                .findById(Integer.parseInt(refund.getMetadata().get("refundId")))
                 .orElseThrow(() -> new ResourceNotFoundException("Refund transaction not found"));
 
         refundTransaction.setCurrentStatus(FAILED.getValue());
@@ -379,11 +305,30 @@ public class StripeService implements PaymentService {
         JSONObject jsonObject = new JSONObject(jsonData);
         Refund refund = Refund.retrieve(jsonObject.getString("id"));
 
-        Transaction refundTransaction = transactionRepository.findById(Integer.parseInt(refund.getMetadata().get("refundId")))
+        Transaction refundTransaction = transactionRepository
+                .findById(Integer.parseInt(refund.getMetadata().get("refundId")))
                 .orElseThrow(() -> new ResourceNotFoundException("Refund transaction not found"));
 
         refundTransaction.setCurrentStatus(SUCCESS.getValue());
         transactionRepository.save(refundTransaction);
+    }
+
+    /**
+     * Creates an audit record for a refund operation
+     */
+    private void createRefundImpactRecord(Transaction deposit, BigDecimal refundAmount) {
+        RefundImpactRecord impactRecord = RefundImpactRecord.builder()
+                .depositTransactionId(deposit.getTransactionId())
+                .impactAmount(refundAmount.negate()) // Negative because we're reducing refundable amount
+                .impactType(RefundImpactType.REFUND)
+                .impactDate(LocalDateTime.now())
+                .previousRefundableAmount(refundAmount) // Since we're setting to zero, previous was refundAmount
+                .newRefundableAmount(BigDecimal.ZERO)
+                .relatedTransferAmount(null) // Not applicable for refunds
+                .notes("Refund processed via Stripe")
+                .build();
+
+        refundImpactRecordRepository.save(impactRecord);
     }
 
 }

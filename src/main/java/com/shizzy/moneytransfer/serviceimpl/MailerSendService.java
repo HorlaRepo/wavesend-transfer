@@ -76,7 +76,7 @@ public class MailerSendService implements EmailService {
         email.addPersonalization("wallet", transaction.getWallet().getWalletId());
     }
 
-    private void sendEmail(Email email) {
+    protected void sendEmail(Email email) {
         MailerSend ms = new MailerSend();
         ms.setToken(apiToken);
         try {

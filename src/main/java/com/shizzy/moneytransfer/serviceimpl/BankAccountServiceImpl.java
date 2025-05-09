@@ -72,62 +72,6 @@ public class BankAccountServiceImpl implements BankAccountService {
         }
     }
 
-//        String region = addBankAccountRequest.getRegion();
-//        Map<String, Object> bankAccountDetails = addBankAccountRequest.getBankAccountDetails();
-//
-//        BankAccount bankAccount = BankAccount.builder()
-//                .region(region)
-//                .accountNumber(bankAccountDetails.get("accountNumber").toString())
-//                .accountType(bankAccountDetails.get("accountType").toString())
-//                .bankName(bankAccountDetails.get("bankName").toString())
-//                .currency(bankAccountDetails.get("currency").toString())
-//                .bankCountry(bankAccountDetails.get("bankCountry").toString())
-//                .createdBy(connectedUser.getName())
-//                .build();
-//
-//        switch (region.toLowerCase()) {
-//            case "africa":
-//                bankAccount.setAccountName(bankAccountDetails.get("accountName").toString());
-//                bankAccount.setBankCode((String) bankAccountDetails.get("ifscCode"));
-//                bankAccount.setPaymentMethod((String) bankAccountDetails.get("paymentMethod"));
-//                break;
-//            case "eu":
-//                bankAccount.setRoutingNumber((String) bankAccountDetails.get("routingNumber"));
-//                bankAccount.setSwiftCode((String) bankAccountDetails.get("swiftCode"));
-//                bankAccount.setBeneficiaryName((String) bankAccountDetails.get("beneficiaryName"));
-//                bankAccount.setBeneficiaryAddress((String) bankAccountDetails.get("beneficiaryAddress"));
-//                bankAccount.setBeneficiaryCountry((String) bankAccountDetails.get("beneficiaryCountry"));
-//                bankAccount.setPostalCode((String) bankAccountDetails.get("postalCode"));
-//                bankAccount.setStreetNumber((String) bankAccountDetails.get("streetNumber"));
-//                bankAccount.setStreetName((String) bankAccountDetails.get("streetName"));
-//                bankAccount.setCity((String) bankAccountDetails.get("city"));
-//                break;
-//            case "us":
-//                bankAccount.setRoutingNumber((String) bankAccountDetails.get("routingNumber"));
-//                bankAccount.setSwiftCode((String) bankAccountDetails.get("swiftCode"));
-//                bankAccount.setBeneficiaryName((String) bankAccountDetails.get("beneficiaryName"));
-//                bankAccount.setBeneficiaryAddress((String) bankAccountDetails.get("beneficiaryAddress"));
-//                break;
-//            default:
-//                throw new IllegalStateException("Unsupported region: " + region);
-//        }
-//
-//        if (bankAccountRepository.findByAccountNumber(bankAccountDetails.get("accountNumber").toString()).isPresent()){
-//            return ApiResponse.<BankAccount>builder()
-//                    .data(null)
-//                    .message("Bank Account already exists")
-//                    .success(false)
-//                    .build();
-//        }
-//
-//        bankAccountRepository.save(bankAccount);
-//
-//        return ApiResponse.<BankAccount>builder()
-//                .data(bankAccount)
-//                .message("Bank Account added successfully")
-//                .success(true)
-//                .build();
-
 
     @Override
     public ApiResponse<List<BankAccount>> getBankAccountsByUserId(Authentication connectedUser) {

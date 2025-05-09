@@ -2,15 +2,18 @@ package com.shizzy.moneytransfer.serviceimpl;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.dto.*;
+import com.shizzy.moneytransfer.enums.RefundImpactType;
 import com.shizzy.moneytransfer.enums.RefundStatus;
 import com.shizzy.moneytransfer.enums.TransactionOperation;
 import com.shizzy.moneytransfer.enums.TransactionStatus;
 import com.shizzy.moneytransfer.enums.TransactionType;
 import com.shizzy.moneytransfer.exception.TransactionLimitExceededException;
 import com.shizzy.moneytransfer.kafka.NotificationProducer;
+import com.shizzy.moneytransfer.model.RefundImpactRecord;
 import com.shizzy.moneytransfer.model.Transaction;
 import com.shizzy.moneytransfer.model.TransactionReference;
 import com.shizzy.moneytransfer.model.Wallet;
+import com.shizzy.moneytransfer.repository.RefundImpactRecordRepository;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
 import com.shizzy.moneytransfer.service.AccountLimitService;
 import com.shizzy.moneytransfer.service.KeycloakService;
@@ -52,10 +55,11 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final OtpService otpService;
     private final TransactionLimitService transactionLimitService;
     private final AccountLimitService accountLimitService;
+    private final RefundImpactRecordRepository refundImpactRecordRepository;
 
     // In-memory store for pending transfers
     private final Map<String, PendingTransfer> pendingTransfers = new ConcurrentHashMap<>();
-    
+
     // Constants
     private static final String TRANSFER_OPERATION = "Money Transfer";
     private static final Duration TRANSFER_EXPIRY = Duration.ofMinutes(15);
@@ -97,7 +101,6 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
 
         // Validate against transaction limits
         transactionLimitService.validateTransfer(transferInfo.getSenderId(), requestBody.amount());
-        
 
         // Generate reference and process transaction
         String referenceNumber = referenceService.generateUniqueReferenceNumber();
@@ -115,7 +118,6 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
 
         // Record the transaction for daily limit tracking
         accountLimitService.recordTransaction(transferInfo.getSenderId(), requestBody.amount());
-
 
         return buildSuccessResponse(transactions, sendingWallet, receivingWallet, referenceNumber);
     }
@@ -136,8 +138,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
                 TransactionType.DEBIT,
                 TransactionOperation.TRANSFER,
                 debitDescription,
-                referenceNumber
-        );
+                referenceNumber);
 
         debitTransaction.setCurrentStatus(TransactionStatus.PENDING.getValue());
         transactionRepository.save(debitTransaction);
@@ -148,8 +149,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
                 TransactionType.CREDIT,
                 TransactionOperation.TRANSFER,
                 creditDescription,
-                referenceNumber
-        );
+                referenceNumber);
 
         creditTransaction.setCurrentStatus(TransactionStatus.PENDING.getValue());
         transactionRepository.save(creditTransaction);
@@ -204,8 +204,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
                 sendingWallet.getWalletId(),
                 receivingWallet.getCreatedBy(),
                 receivingWallet.getWalletId(),
-                referenceNumber
-        );
+                referenceNumber);
 
         return ApiResponse.<TransactionResponseDTO>builder()
                 .success(true)
@@ -234,27 +233,69 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
                 .build();
     }
 
-    private void updateRefundableAmount(Wallet sendingWallet, BigDecimal remainingAmount) {
+    private void updateRefundableAmount(Wallet sendingWallet, BigDecimal transferAmount) {
+        log.info("Updating refundable amounts for wallet {} after transfer of {}",
+                sendingWallet.getWalletId(), transferAmount);
+
+        BigDecimal remainingToDeduct = transferAmount;
+
+        // Get all refundable deposits ordered by date (oldest first) - FIFO approach
         List<Transaction> senderDeposits = transactionRepository
-                .findByWalletIdAndOperationAndRefundStatusNot(sendingWallet.getId(),
-                        TransactionOperation.DEPOSIT, RefundStatus.NON_REFUNDABLE);
+                .findByWalletIdAndOperationAndRefundStatusNotOrderByTransactionDateAsc(
+                        sendingWallet.getId(),
+                        TransactionOperation.DEPOSIT,
+                        RefundStatus.NON_REFUNDABLE);
+
+        if (senderDeposits.isEmpty()) {
+            log.info("No refundable deposits found. Transfer likely used previously received funds.");
+            return;
+        }
+
+        log.debug("Found {} refundable deposits to process", senderDeposits.size());
 
         for (Transaction deposit : senderDeposits) {
-            BigDecimal refundableAmount = deposit.getRefundableAmount();
-            if (remainingAmount.compareTo(refundableAmount) >= 0) {
-                remainingAmount = remainingAmount.subtract(refundableAmount);
-                deposit.setRefundableAmount(BigDecimal.ZERO);
-                deposit.setRefundStatus(RefundStatus.NON_REFUNDABLE);
-            } else {
-                deposit.setRefundableAmount(refundableAmount.subtract(remainingAmount));
-                deposit.setRefundStatus(RefundStatus.PARTIALLY_REFUNDABLE);
-                remainingAmount = BigDecimal.ZERO;
+            BigDecimal depositRefundableAmount = deposit.getRefundableAmount();
+            log.debug("Processing deposit ID: {}, reference: {}, refundable amount: {}",
+                    deposit.getTransactionId(), deposit.getReferenceNumber(), depositRefundableAmount);
+
+            if (depositRefundableAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue; // Skip deposits with no refundable amount
             }
+
+            // Calculate how much to deduct from this deposit
+            BigDecimal amountToDeduct = remainingToDeduct.min(depositRefundableAmount);
+            BigDecimal newRefundableAmount = depositRefundableAmount.subtract(amountToDeduct);
+
+            // Update deposit's refundable amount
+            deposit.setRefundableAmount(newRefundableAmount);
+
+            // Update refund status based on new refundable amount
+            if (newRefundableAmount.compareTo(BigDecimal.ZERO) == 0) {
+                deposit.setRefundStatus(RefundStatus.NON_REFUNDABLE);
+                log.debug("Deposit ID: {} is now NON_REFUNDABLE", deposit.getTransactionId());
+            } else if (newRefundableAmount.compareTo(deposit.getAmount()) < 0) {
+                deposit.setRefundStatus(RefundStatus.PARTIALLY_REFUNDABLE);
+                log.debug("Deposit ID: {} is now PARTIALLY_REFUNDABLE with amount {}",
+                        deposit.getTransactionId(), newRefundableAmount);
+            }
+            // Create a refund impact record for audit trail
+            createRefundImpactRecord(deposit, amountToDeduct, transferAmount);
+
+            // Save updated deposit
             transactionRepository.save(deposit);
 
-            if (remainingAmount.compareTo(BigDecimal.ZERO) == 0) {
+            // Update remaining amount to deduct
+            remainingToDeduct = remainingToDeduct.subtract(amountToDeduct);
+
+            if (remainingToDeduct.compareTo(BigDecimal.ZERO) <= 0) {
                 break;
             }
+        }
+
+        // If we've gone through all deposits and still have amount to deduct,
+        // the transfer used previously received funds (not refundable deposits)
+        if (remainingToDeduct.compareTo(BigDecimal.ZERO) > 0) {
+            log.info("Transfer partially used non-deposit funds: {}", remainingToDeduct);
         }
     }
 
@@ -263,13 +304,13 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
             String userId) {
         // Validate request and user
         validateSenderReceiver(requestBody.senderEmail(), requestBody.receiverEmail());
-        
+
         // Verify it's the user's own email
         UserRepresentation user = keycloakService.getUserById(userId).getData();
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
-        
+
         if (!user.getEmail().equals(requestBody.senderEmail())) {
             throw new IllegalArgumentException("You can only transfer from your own account");
         }
@@ -279,68 +320,65 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
             // Get sender and receiver information
             TransferInfo transferInfo = fetchSenderAndReceiverId(
                     requestBody.senderEmail(), requestBody.receiverEmail());
-                    
+
             // Check if sender has sufficient balance
             Wallet sendingWallet = walletService.findWalletOrThrow(transferInfo.getSenderId());
             walletService.verifyWalletBalance(sendingWallet.getBalance(), requestBody.amount());
-            
+
             // Validate against transfer limits
             transactionLimitService.validateTransfer(userId, requestBody.amount());
-            
+
             // Validate against daily transaction limits
             if (accountLimitService.wouldExceedDailyLimit(userId, requestBody.amount())) {
                 throw new TransactionLimitExceededException(
-                    "This transfer would exceed your daily transaction limit"
-                );
+                        "This transfer would exceed your daily transaction limit");
             }
-            
+
             // Check if recipient wallet would exceed balance limit
             Wallet receivingWallet = walletService.findWalletOrThrow(transferInfo.getReceiverId());
             BigDecimal newReceiverBalance = receivingWallet.getBalance().add(requestBody.amount());
             transactionLimitService.validateNewBalance(transferInfo.getReceiverId(), newReceiverBalance);
-            
+
         } catch (TransactionLimitExceededException e) {
             // Return friendly error for limit exceeded
             return ApiResponse.<TransferInitiationResponse>builder()
-                .success(false)
-                .message(e.getMessage())
-                .build();
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
         } catch (Exception e) {
             // Log other errors but continue with OTP process for non-critical validations
             log.warn("Pre-validation warning (will continue with OTP): {}", e.getMessage());
         }
-        
-        
+
         // Generate unique token for this transfer request
         String transferToken = UUID.randomUUID().toString();
-        
+
         // Store pending transfer in our in-memory map
         pendingTransfers.put(transferToken, new PendingTransfer(requestBody));
         log.info("Stored pending transfer with token: {}", transferToken);
-        
+
         // Get recipient name for OTP email
         TransferInfo transferInfo = fetchSenderAndReceiverId(
                 requestBody.senderEmail(), requestBody.receiverEmail());
-        
+
         // Prepare details for OTP email
         Map<String, Object> operationDetails = new HashMap<>();
         operationDetails.put("amount", requestBody.amount().toString());
         operationDetails.put("recipient", transferInfo.getReceiverName());
         operationDetails.put("recipient_email", requestBody.receiverEmail());
-        
+
         // Send OTP
         otpService.sendOtp(
-            user.getEmail(),
-            user.getFirstName(),
-            TRANSFER_OPERATION,
-            operationDetails
-        );
-        
+                user.getEmail(),
+                user.getFirstName(),
+                TRANSFER_OPERATION,
+                operationDetails);
+
         return ApiResponse.<TransferInitiationResponse>builder()
-            .success(true)
-            .message("Transfer initiated. Please check your email for verification code.")
-            .data(new TransferInitiationResponse(transferToken))
-            .build();
+                .success(true)
+                .message("Transfer initiated. Please check your email for verification code.")
+                .data(new TransferInitiationResponse(transferToken))
+                .build();
     }
 
     @Override
@@ -351,46 +389,45 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         if (user == null) {
             throw new IllegalArgumentException("User not found");
         }
-        
+
         log.info("Verifying transfer request with token: {}", request.getTransferToken());
-        
+
         // Verify OTP
         Map<String, Object> operationDetails = otpService.verifyOtp(
-            user.getEmail(),
-            TRANSFER_OPERATION,
-            request.getOtp()
-        );
-        
+                user.getEmail(),
+                TRANSFER_OPERATION,
+                request.getOtp());
+
         if (operationDetails == null) {
             log.warn("Invalid or expired OTP for user: {}", user.getEmail());
             throw new IllegalArgumentException("Invalid or expired verification code");
         }
-        
+
         // Retrieve pending transfer from our in-memory map
         PendingTransfer pendingTransfer = pendingTransfers.get(request.getTransferToken());
-        
+
         if (pendingTransfer == null) {
             log.warn("Transfer request not found for token: {}", request.getTransferToken());
             throw new IllegalArgumentException("Transfer request expired or not found");
         }
-        
+
         // Check if transfer request is expired
         if (pendingTransfer.isExpired()) {
             log.warn("Transfer request expired for token: {}", request.getTransferToken());
             pendingTransfers.remove(request.getTransferToken());
             throw new IllegalArgumentException("Transfer request expired");
         }
-        
+
         CreateTransactionRequestBody requestBody = pendingTransfer.getRequestBody();
-        
+
         // Clean up
         pendingTransfers.remove(request.getTransferToken());
         log.info("Removed pending transfer with token: {}", request.getTransferToken());
-        
+
         // Execute the actual transfer
         return transfer(requestBody);
     }
-    
+
     /**
      * Scheduled task to clean up expired pending transfers
      * Runs every 5 minutes
@@ -398,16 +435,35 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     @Scheduled(fixedRate = 5 * 60 * 1000) // 5 minutes
     public void cleanupExpiredTransfers() {
         int removedCount = 0;
-        
+
         for (Map.Entry<String, PendingTransfer> entry : pendingTransfers.entrySet()) {
             if (entry.getValue().isExpired()) {
                 pendingTransfers.remove(entry.getKey());
                 removedCount++;
             }
         }
-        
+
         if (removedCount > 0) {
             log.info("Cleaned up {} expired pending transfers", removedCount);
         }
+    }
+
+    /**
+     * Creates an audit record of how a transfer impacted a deposit's refundable
+     * amount
+     */
+    private void createRefundImpactRecord(Transaction deposit, BigDecimal amountDeducted,
+            BigDecimal totalTransferAmount) {
+        RefundImpactRecord impactRecord = RefundImpactRecord.builder()
+                .depositTransactionId(deposit.getTransactionId())
+                .impactAmount(amountDeducted.negate()) // Negative because we're reducing refundable amount
+                .impactType(RefundImpactType.TRANSFER)
+                .impactDate(LocalDateTime.now())
+                .previousRefundableAmount(deposit.getRefundableAmount().add(amountDeducted))
+                .newRefundableAmount(deposit.getRefundableAmount())
+                .relatedTransferAmount(totalTransferAmount)
+                .build();
+
+        refundImpactRecordRepository.save(impactRecord);
     }
 }

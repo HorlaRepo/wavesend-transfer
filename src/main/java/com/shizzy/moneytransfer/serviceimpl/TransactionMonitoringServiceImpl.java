@@ -40,8 +40,8 @@ public class TransactionMonitoringServiceImpl implements TransactionMonitoringSe
             transaction.getFlaggedTransactionReasons().addAll(reasons);
             transactionRepository.save(transaction);
 
-            // If more than 2 rules triggered, flag the entire wallet
-            if (reasons.size() > 2) {
+            // If 3 or more rules triggered, flag the entire wallet
+            if (reasons.size() >= 3) {
                 walletService.flagWallet(transaction.getWallet().getWalletId());
             }
 

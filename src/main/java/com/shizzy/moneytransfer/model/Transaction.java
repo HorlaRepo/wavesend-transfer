@@ -37,6 +37,9 @@ public class Transaction implements Serializable {
 
         private String providerId;
 
+        @Version
+        private Long version;
+
         @Column(nullable = false)
         private BigDecimal amount;
 
@@ -51,18 +54,6 @@ public class Transaction implements Serializable {
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
         @Column(nullable = false)
         private LocalDateTime transactionDate;
-
-        @JsonIgnore
-        @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "origin")
-        private Country origin;
-
-        @JsonIgnore
-        @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "destination")
-        private Country destination;
 
         private String referenceNumber;
         private String description;
@@ -110,7 +101,6 @@ public class Transaction implements Serializable {
         @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true)
         private List<FlaggedTransactionReason> flaggedTransactionReasons = new ArrayList<>(); // Initialize here
 
-        // Add these helper methods
         public void addFlaggedReason(FlaggedTransactionReason reason) {
                 if (flaggedTransactionReasons == null) {
                         flaggedTransactionReasons = new ArrayList<>();
@@ -132,9 +122,6 @@ public class Transaction implements Serializable {
         @Enumerated(EnumType.STRING)
         private RefundStatus refundStatus;
 
-        // @JsonIgnore
-        // @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-        // @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, fetch =
-        // FetchType.LAZY)
-        // private List<TransactionStatus> transactionStatuses;
+        private LocalDateTime refundDate;
+
 }

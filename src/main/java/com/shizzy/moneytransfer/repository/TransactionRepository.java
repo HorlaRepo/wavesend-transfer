@@ -14,7 +14,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,8 +23,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     Optional<Transaction> findTransactionByMtcn(String mtcn);
     List<Transaction> findTransactionByReferenceNumber(String referenceNumber);
     List<Transaction> findTransactionByWalletId(Long wallet_id);
+    List<Transaction> findByWalletIdAndOperation(Long walletId, TransactionOperation operation);
 
     Page<Transaction> findAll(Specification<Transaction> specification, Pageable pageable);
+
+    List<Transaction> findByWalletIdAndOperationAndRefundStatusNotOrderByTransactionDateAsc(
+    Long walletId, 
+    TransactionOperation operation, 
+    RefundStatus refundStatus);
 
     @Query("SELECT t FROM Transaction t WHERE (t.wallet = :userWallet) " +
             "AND t.transactionDate BETWEEN :startDate AND :endDate")

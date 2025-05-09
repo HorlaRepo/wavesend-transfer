@@ -1,24 +1,22 @@
 package com.shizzy.moneytransfer.serviceimpl;
 
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.exception.InvalidFileFormatException;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.model.UserProfileImage;
 import com.shizzy.moneytransfer.repository.UserProfileImageRepository;
-import com.shizzy.moneytransfer.s3.S3Buckets;
 import com.shizzy.moneytransfer.s3.S3Service;
 import com.shizzy.moneytransfer.service.UserProfileImageService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import twitter4j.v1.User;
 
-import java.io.IOException;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import lombok.RequiredArgsConstructor;
+
 
 @Service
 @RequiredArgsConstructor
