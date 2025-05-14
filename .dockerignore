@@ -4,3 +4,17 @@ target/
 .idea/
 *.iml
 *.md
+
+
+### Environment Files ###
+*.env
+*.env.*
+.env
+!.env.example
+
+### Keycloak files ###
+/keycloak/
+/META-INF/
+/provider/
+/themes/
+/temp/

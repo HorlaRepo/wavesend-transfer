@@ -18,7 +18,7 @@ import lombok.*;
 public class Card {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     private String cardType;
     @Column(unique = true)

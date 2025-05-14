@@ -89,7 +89,7 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public ApiResponse<String> lockCard(Integer cardId) {
+    public ApiResponse<String> lockCard(Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id " + cardId));
         card.setLocked(true);
@@ -102,7 +102,7 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public ApiResponse<String> unlockCard(Integer cardId) {
+    public ApiResponse<String> unlockCard(Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Card not found with id " + cardId));
         card.setLocked(false);
@@ -117,12 +117,12 @@ public class CardServiceImpl implements CardService {
 
 
     @Override
-    public ApiResponse<String> setCardPin(Integer cardId, String pin) {
+    public ApiResponse<String> setCardPin(Long cardId, String pin) {
         return cardPinService.setCardPin(cardId, pin);
     }
 
     @Override
-    public boolean checkPin(Integer cardId, String enteredPin) {
+    public boolean checkPin(Long cardId, String enteredPin) {
         boolean isValid = cardPinService.validatePin(cardId, enteredPin);
         if (!isValid) {
             throw new IllegalArgumentException("Invalid PIN");
@@ -132,7 +132,7 @@ public class CardServiceImpl implements CardService {
 
 
     @Override
-    public ApiResponse<String> deleteCard(Integer cardId) {
+    public ApiResponse<String> deleteCard(Long cardId) {
         Card card = cardRepository.findById(cardId).orElseThrow(()-> new ResourceNotFoundException("Card not found"));
         cardRepository.delete(card);
 

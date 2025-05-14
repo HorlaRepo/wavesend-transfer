@@ -2,6 +2,8 @@ package com.shizzy.moneytransfer.model;
 
 import com.shizzy.moneytransfer.enums.VerificationStatus;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,7 +32,11 @@ public class KycVerification {
     private String idDocumentUrl;
     private String idRejectionReason;
     private String addressRejectionReason;
+
+    @Enumerated(EnumType.STRING)
     private VerificationStatus addressVerificationStatus;
+    
+    @Enumerated(EnumType.STRING)
     private VerificationStatus idVerificationStatus;
 
 }

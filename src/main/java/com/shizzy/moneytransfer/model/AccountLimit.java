@@ -8,6 +8,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
 
 @Entity
 @Table(name = "account_limits")
@@ -37,6 +43,20 @@ public class AccountLimit {
     
     @Column(precision = 19, scale = 4)
     private BigDecimal maxTransferAmount;
+
+
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdDate;
+    
+    @LastModifiedDate
+    private LocalDateTime lastModifiedDate;
+    
+    @CreatedBy
+    private String createdBy;
+    
+    @LastModifiedBy
+    private String lastModifiedBy;
     
     /**
      * Check if a transaction amount exceeds the limit

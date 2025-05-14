@@ -35,17 +35,9 @@
 			</dependency>
 
 			<dependency>
-				<groupId>com.azure</groupId>
-				<artifactId>azure-sdk-bom</artifactId>
-				<version>1.2.10</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>5.15.0</version>
+				<groupId>com.google.cloud</groupId>
+				<artifactId>libraries-bom</artifactId>
+				<version>  26.59.0</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -101,19 +93,6 @@
 			<version>2.16.0</version> <!-- Replace with the latest version -->
 		</dependency>
 
-		<dependency>
-			<groupId>com.azure</groupId>
-			<artifactId>azure-security-keyvault-secrets</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.azure</groupId>
-			<artifactId>azure-identity</artifactId>
-			<!-- This version will be managed by the BOM above -->
-		</dependency>
-		<dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
@@ -176,14 +155,24 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.azure</groupId>
-			<artifactId>azure-messaging-eventhubs</artifactId>
-			<version>5.15.0</version>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-managedkafka</artifactId>
 		</dependency>
+
 		<dependency>
-			<groupId>com.azure</groupId>
-			<artifactId>azure-messaging-eventhubs-checkpointstore-blob</artifactId>
-			<version>1.16.0</version>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-pubsub</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.cloud.hosted.kafka</groupId>
+			<artifactId>managed-kafka-auth-login-handler</artifactId>
+			<version>1.0.5</version>
 		</dependency>
 
 		<dependency>
@@ -398,6 +387,14 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
+			<version>11.8.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+			<version>11.8.1</version>
+			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>

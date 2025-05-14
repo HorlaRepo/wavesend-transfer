@@ -170,9 +170,9 @@ class CardServiceImplTest {
 
     @Test
     void lockCard_Success() {
-        when(cardRepository.findById(1)).thenReturn(Optional.of(card));
+        when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
 
-        ApiResponse<String> response = cardService.lockCard(1);
+        ApiResponse<String> response = cardService.lockCard(1L);
 
         assertTrue(response.isSuccess());
         assertEquals("Card locked successfully", response.getMessage());
@@ -182,9 +182,9 @@ class CardServiceImplTest {
 
     @Test
     void unlockCard_Success() {
-        when(cardRepository.findById(1)).thenReturn(Optional.of(card));
+        when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
 
-        ApiResponse<String> response = cardService.unlockCard(1);
+        ApiResponse<String> response = cardService.unlockCard(1L);
 
         assertTrue(response.isSuccess());
         assertEquals("Card unlocked successfully", response.getMessage());
@@ -200,38 +200,38 @@ class CardServiceImplTest {
                 .message("PIN set successfully")
                 .build();
 
-        when(cardPinService.setCardPin(1, "1234")).thenReturn(pinResponse);
+        when(cardPinService.setCardPin(1L, "1234")).thenReturn(pinResponse);
 
-        ApiResponse<String> response = cardService.setCardPin(1, "1234");
+        ApiResponse<String> response = cardService.setCardPin(1L, "1234");
 
         assertTrue(response.isSuccess());
         assertEquals("PIN set successfully", response.getMessage());
-        verify(cardPinService).setCardPin(1, "1234");
+        verify(cardPinService).setCardPin(1L, "1234");
     }
 
     @Test
     void checkPin_Valid() {
-        when(cardPinService.validatePin(1, "1234")).thenReturn(true);
+        when(cardPinService.validatePin(1L, "1234")).thenReturn(true);
 
-        boolean result = cardService.checkPin(1, "1234");
+        boolean result = cardService.checkPin(1L, "1234");
 
         assertTrue(result);
-        verify(cardPinService).validatePin(1, "1234");
+        verify(cardPinService).validatePin(1L, "1234");
     }
 
     @Test
     void checkPin_Invalid() {
-        when(cardPinService.validatePin(1, "1234")).thenReturn(false);
+        when(cardPinService.validatePin(1L, "1234")).thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class, () -> cardService.checkPin(1, "1234"));
-        verify(cardPinService).validatePin(1, "1234");
+        assertThrows(IllegalArgumentException.class, () -> cardService.checkPin(1L, "1234"));
+        verify(cardPinService).validatePin(1L, "1234");
     }
 
     @Test
     void deleteCard_Success() {
-        when(cardRepository.findById(1)).thenReturn(Optional.of(card));
+        when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
 
-        ApiResponse<String> response = cardService.deleteCard(1);
+        ApiResponse<String> response = cardService.deleteCard(1L);
 
         assertTrue(response.isSuccess());
         assertEquals("Card deleted successfully", response.getMessage());
@@ -240,9 +240,9 @@ class CardServiceImplTest {
 
     @Test
     void deleteCard_CardNotFound() {
-        when(cardRepository.findById(1)).thenReturn(Optional.empty());
+        when(cardRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> cardService.deleteCard(1));
+        assertThrows(ResourceNotFoundException.class, () -> cardService.deleteCard(1L));
     }
 
     // Helper class for user data

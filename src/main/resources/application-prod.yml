@@ -14,17 +14,17 @@ cors:
 spring:
   application:
     name: wavesend
-  cloud:
-    azure:
-      keyvault:
-        secret:
-          enabled: true
-      credential:
-        managed-identity-enabled: false
-        client-id: ${AZURE_CLIENT_ID}
-        client-secret: ${AZURE_CLIENT_SECRET}
-      profile:
-        tenant-id: ${AZURE_TENANT_ID}
+  # cloud:
+  #   azure:
+  #     keyvault:
+  #       secret:
+  #         enabled: true
+  #     credential:
+  #       managed-identity-enabled: false
+  #       client-id: ${AZURE_CLIENT_ID}
+  #       client-secret: ${AZURE_CLIENT_SECRET}
+  #     profile:
+  #       tenant-id: ${AZURE_TENANT_ID}
 
   datasource:
     url: ${DB_URL}
@@ -51,11 +51,10 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     properties:
-      sasl.mechanism: PLAIN
+      sasl.mechanism: OAUTHBEARER
       sasl.jaas.config: >-
-        org.apache.kafka.common.security.plain.PlainLoginModule required 
-        username="$ConnectionString" 
-        password="${EVENT_HUB_CONNECTION_STRING}";
+        org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
+      sasl.login.callback.handler.class: com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler
       security.protocol: SASL_SSL
     consumer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
@@ -104,12 +103,34 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update  # Important: No schema updates in production
+      ddl-auto: validate
     properties:
       hibernate:
+        # Performance optimizations
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+        # Connection handling
+        connection:
+          provider_disables_autocommit: true
+        # Query optimizations
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+        # Remove redundant SQL formatting in production
         format_sql: false
+        # Keep current ID generation settings
+        id:
+          new_generator_mappings: true
+          optimizer.default_increment_size: 1
+          sequence.increment_size_mismatch_strategy: fix
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Statement caching
+        generate_statistics: false
     show-sql: false
-    open-in-view: false  # Better performance in production
+    open-in-view: false
 
   main:
     web-application-type: servlet
@@ -131,6 +152,7 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
+      url: ${REDIS_URL}
       ssl:
         enabled: true
       timeout: 600  # Added for production
@@ -221,6 +243,8 @@ aws:
     buckets:
       wavesend: ${AWS_S3_BUCKET_NAME}
     url-expiration: 3600
+  access-key-id: ${AWS_ACCESS_KEY_ID}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY}
 
 openrouter:
   api-key: ${OPENROUTER_API_KEY}

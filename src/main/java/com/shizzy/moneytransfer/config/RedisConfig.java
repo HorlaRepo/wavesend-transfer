@@ -73,37 +73,50 @@ public class RedisConfig {
     @Value("${spring.data.redis.timeout:2000}")
     private int timeout;
 
+    @Value("${spring.profiles.active:default}")
+    private String activeProfile;
+
+    @Value("${spring.data.redis.url}")
+    private String redisUrl;
+
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
         try {
-            RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
-            redisConfig.setHostName(redisHost);
-            redisConfig.setPort(redisPort);
-
-            if (redisPassword != null && !redisPassword.isEmpty()) {
-                redisConfig.setPassword(redisPassword);
-            }
-
-            SocketOptions socketOptions = SocketOptions.builder()
-                .connectTimeout(Duration.ofMillis(timeout))
-                .build();
-
-            ClientOptions clientOptions = ClientOptions.builder()
-                .timeoutOptions(TimeoutOptions.enabled())
-                .socketOptions(socketOptions)
-                .build();
+            logger.info("Configuring Redis for profile: {}", activeProfile);
 
             LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration
-                .builder()
-                .commandTimeout(Duration.ofMillis(timeout))
-                .clientOptions(clientOptions);
+                    .builder()
+                    .commandTimeout(Duration.ofMillis(timeout));
 
             if (sslEnabled) {
                 logger.info("Enabling SSL for Redis connection");
                 clientConfigBuilder.useSsl();
             }
 
-            return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
+            // For production, use the URI approach
+            if ("prod".equals(activeProfile) || "production".equals(activeProfile)) {
+                String uri = redisUrl;
+                logger.info("Using Redis URI connection for production: {}", uri.replaceAll(":[^:@]+@", ":****@"));
+
+                return new LettuceConnectionFactory(
+                        LettuceConnectionFactory.createRedisConfiguration(uri),
+                        clientConfigBuilder.build());
+            }
+            // For local, use the traditional approach
+            else {
+                logger.info("Connecting to Redis at {}:{}", redisHost, redisPort);
+
+                RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+                redisConfig.setHostName(redisHost);
+                redisConfig.setPort(redisPort);
+
+                if (redisPassword != null && !redisPassword.isEmpty()) {
+                    redisConfig.setPassword(redisPassword);
+                    logger.debug("Redis password configured");
+                }
+
+                return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
+            }
         } catch (Exception e) {
             logger.error("Failed to configure Redis connection: {}", e.getMessage(), e);
             throw e;
@@ -116,18 +129,19 @@ public class RedisConfig {
     @Bean("redisObjectMapper")
     public ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = objectMapper.copy();
-        
+
         // Configure the ObjectMapper to include type information
         mapper.activateDefaultTyping(
-            LaissezFaireSubTypeValidator.instance,
-            ObjectMapper.DefaultTyping.NON_FINAL,
-            JsonTypeInfo.As.PROPERTY);
-        
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
+
         return mapper;
     }
 
     /**
-     * Create a consistent GenericJackson2JsonRedisSerializer using our configured redisObjectMapper
+     * Create a consistent GenericJackson2JsonRedisSerializer using our configured
+     * redisObjectMapper
      */
     @Bean
     public GenericJackson2JsonRedisSerializer redisSerializer(
@@ -142,19 +156,19 @@ public class RedisConfig {
     public RedisTemplate<String, Object> redisTemplate(
             LettuceConnectionFactory lettuceConnectionFactory,
             GenericJackson2JsonRedisSerializer redisSerializer) {
-        
+
         final RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(lettuceConnectionFactory);
-        
+
         // Use StringRedisSerializer for keys
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
         redisTemplate.setKeySerializer(stringSerializer);
         redisTemplate.setHashKeySerializer(stringSerializer);
-        
+
         // Use our consistent serializer for values
         redisTemplate.setValueSerializer(redisSerializer);
         redisTemplate.setHashValueSerializer(redisSerializer);
-        
+
         logger.info("Configured RedisTemplate with consistent serializers");
         return redisTemplate;
     }
@@ -165,12 +179,12 @@ public class RedisConfig {
     @Bean
     public RedisCacheConfiguration redisCacheConfiguration(GenericJackson2JsonRedisSerializer redisSerializer) {
         return RedisCacheConfiguration.defaultCacheConfig()
-            .entryTtl(Duration.ofMinutes(entryTtl))
-            .disableCachingNullValues()
-            .serializeKeysWith(RedisSerializationContext.SerializationPair
-                .fromSerializer(new StringRedisSerializer()))
-            .serializeValuesWith(RedisSerializationContext.SerializationPair
-                .fromSerializer(redisSerializer));
+                .entryTtl(Duration.ofMinutes(entryTtl))
+                .disableCachingNullValues()
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(redisSerializer));
     }
 
     /**
@@ -180,46 +194,46 @@ public class RedisConfig {
     public RedisCacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
             RedisCacheConfiguration redisCacheConfiguration) {
-        
+
         return RedisCacheManager.builder(connectionFactory)
-            .cacheDefaults(redisCacheConfiguration)
-            .cacheWriter(RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory))
-            .transactionAware()
-            .build();
+                .cacheDefaults(redisCacheConfiguration)
+                .cacheWriter(RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory))
+                .transactionAware()
+                .build();
     }
-    
+
     /**
      * Configure different cache settings for different caches
      */
     @Bean
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(
             GenericJackson2JsonRedisSerializer redisSerializer) {
-        
+
         return builder -> {
             Map<String, RedisCacheConfiguration> configMap = new HashMap<>();
-            
+
             // Base configuration with consistent serializer
             RedisCacheConfiguration baseConf = RedisCacheConfiguration.defaultCacheConfig()
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(redisSerializer));
-            
+                    .serializeKeysWith(RedisSerializationContext.SerializationPair
+                            .fromSerializer(new StringRedisSerializer()))
+                    .serializeValuesWith(RedisSerializationContext.SerializationPair
+                            .fromSerializer(redisSerializer));
+
             // Transactions cache configuration
             RedisCacheConfiguration transactionsConf = baseConf.entryTtl(Duration.ofMinutes(transactionsTtl));
-            
+
             // Wallets cache configuration
             RedisCacheConfiguration walletsConf = baseConf.entryTtl(Duration.ofMinutes(walletsTtl));
-            
+
             // OTP cache configuration - short TTL
             RedisCacheConfiguration otpConf = baseConf.entryTtl(Duration.ofMinutes(otpCacheTtl));
-            
+
             // Beneficiary cache configuration - medium TTL
             RedisCacheConfiguration beneficiaryConf = baseConf.entryTtl(Duration.ofMinutes(30));
-            
+
             // Scheduled Transfer cache configuration - medium TTL
             RedisCacheConfiguration scheduledTransfersConf = baseConf.entryTtl(Duration.ofMinutes(30));
-            
+
             // Add all cache configurations
             configMap.put(CacheNames.TRANSACTIONS, transactionsConf);
             configMap.put(CacheNames.SINGLE_TRANSACTION, transactionsConf);
@@ -229,15 +243,15 @@ public class RedisConfig {
             configMap.put("otpCache", otpConf);
             configMap.put("pending_transfers", otpConf);
             configMap.put("transfer_requests", otpConf);
-            
+
             configMap.put(CacheNames.USER_BENEFICIARIES, beneficiaryConf);
             configMap.put(CacheNames.SINGLE_BENEFICIARY, beneficiaryConf);
-            
+
             configMap.put(CacheNames.SCHEDULED_TRANSFERS, scheduledTransfersConf);
             configMap.put(CacheNames.SINGLE_SCHEDULED_TRANSFER, scheduledTransfersConf);
             configMap.put(CacheNames.USER_SCHEDULED_TRANSFERS, scheduledTransfersConf);
             configMap.put(CacheNames.RECURRING_SERIES, scheduledTransfersConf);
-            
+
             builder.withInitialCacheConfigurations(configMap);
         };
     }
@@ -248,17 +262,17 @@ public class RedisConfig {
             StringBuilder sb = new StringBuilder();
             sb.append(target.getClass().getSimpleName()).append(":");
             sb.append(method.getName()).append(":");
-            
+
             for (Object param : params) {
                 sb.append(param).append(":");
             }
-            
+
             String key = sb.toString();
             logger.debug("Generated cache key: {}", key);
             return key;
         };
     }
-    
+
     @Bean
     public RedisCacheErrorHandler errorHandler() {
         return new RedisCacheErrorHandler();

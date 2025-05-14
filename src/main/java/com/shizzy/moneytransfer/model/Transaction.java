@@ -30,9 +30,8 @@ public class Transaction implements Serializable {
         private static final long serialVersionUID = 1L;
 
         @Id
-        @SequenceGenerator(name = "transaction_id_sequence", sequenceName = "transaction_id_sequence", allocationSize = 1)
-        @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "transaction_id_sequence")
-        @Column(name = "transaction_id", columnDefinition = "BIGSERIAL")
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "transaction_id")
         private Integer transactionId;
 
         private String providerId;

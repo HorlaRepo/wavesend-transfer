@@ -1,6 +1,5 @@
 package com.shizzy.moneytransfer.controller;
 
-import com.shizzy.moneytransfer.config.KeyVaultSecretProvider;
 import com.shizzy.moneytransfer.model.Admin;
 import com.shizzy.moneytransfer.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,11 +19,9 @@ import java.util.Optional;
 public class Ping {
 
     private final AdminRepository adminRepository;
-    private final KeyVaultSecretProvider secretProvider;
     
-    public Ping(AdminRepository adminRepository, KeyVaultSecretProvider secretProvider) {
+    public Ping(AdminRepository adminRepository) {
         this.adminRepository = adminRepository;
-        this.secretProvider = secretProvider;
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN','SUPER_ADMIN')")
@@ -37,16 +34,7 @@ public class Ping {
         }
     }
 
-    @GetMapping("/test-keyvault")
-    public String testKeyVault() {
-        String awsAccessKey = secretProvider.getSecret("aws-access-key-id");
-        if (awsAccessKey != null && !awsAccessKey.isEmpty()) {
-            return "Successfully retrieved secret: " + awsAccessKey.substring(0, 5) + "...";
-        } else {
-            return "Could not retrieve secret from Key Vault";
-        }
-    }
-
+   
     @GetMapping("/currentAdminOrUser")
     public Object getCurrentAdminOrUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

@@ -27,14 +27,14 @@ spring:
       #   default-context: application
       #   version: 2
   
-    azure:
-      keyvault:
-        secret:
-          enabled: true
-      credential:
-        managed-identity-enabled: false
-        client-id: ${AZURE_CLIENT_ID}
-        client-secret: ${AZURE_CLIENT_SECRET}
+    # azure:
+    #   keyvault:
+    #     secret:
+    #       enabled: true
+    #   credential:
+    #     managed-identity-enabled: false
+    #     client-id: ${AZURE_CLIENT_ID}
+    #     client-secret: ${AZURE_CLIENT_SECRET}
   
   config:
     import: optional:file:.env[.properties]
@@ -49,6 +49,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     repair-on-migrate: true
+    out-of-order: true
 
   devtools:
     restart:
@@ -108,12 +109,21 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
+        id:
+          new_generator_mappings: true
+          optimizer.default_increment_size: 1
+          sequence.increment_size_mismatch_strategy: fix
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        hbm2ddl:
+          auto: validate
+          jdbc_metadata_extraction_strategy: individually
     show-sql: false
     open-in-view: true
+
   main:
     web-application-type: servlet
   servlet:
@@ -211,6 +221,8 @@ aws:
     buckets:
       wavesend: wavesend
     url-expiration: 3600
+  access-key-id: ${AWS_ACCESS_KEY_ID}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY}
 
 openrouter:
   api-key: ${OPENROUTER_API_KEY}

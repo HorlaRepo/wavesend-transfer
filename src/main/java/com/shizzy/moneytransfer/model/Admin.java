@@ -12,7 +12,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -26,19 +25,10 @@ import java.util.Set;
 @AllArgsConstructor
 @RequiredArgsConstructor
 @Entity(name = "Admin")
-@Table(
-        name = "admins",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "username_unique",
-                        columnNames = "username"
-                ),
-                @UniqueConstraint(
-                        name = "email_unique",
-                        columnNames = "email"
-                )
-        }
-)
+@Table(name = "admins", uniqueConstraints = {
+        @UniqueConstraint(name = "username_unique", columnNames = "username"),
+        @UniqueConstraint(name = "email_unique", columnNames = "email")
+})
 @Builder
 @EntityListeners(AuditingEntityListener.class)
 public class Admin implements Serializable {
@@ -47,32 +37,26 @@ public class Admin implements Serializable {
     private static final long serialVersionUID = 6L;
 
     @Id
-    @SequenceGenerator(
-            name = "admin_id_sequence",
-            sequenceName = "admin_id_sequence",
-            allocationSize = 1
-    )
-    @GeneratedValue(
-            strategy = GenerationType.SEQUENCE,
-            generator = "admin_id_sequence"
+    @GeneratedValue(strategy = GenerationType.IDENTITY
+
     )
     private Integer adminId;
 
-//    @Column(name = "first_name", nullable = false)
-//    @NotBlank(message = "First name cannot be blank")
+    // @Column(name = "first_name", nullable = false)
+    // @NotBlank(message = "First name cannot be blank")
     private String firstName;
 
-//    @Column(name = "last_name", nullable = false)
-//    @NotBlank(message = "Last name cannot be blank")
+    // @Column(name = "last_name", nullable = false)
+    // @NotBlank(message = "Last name cannot be blank")
     private String lastName;
 
-//    @NotBlank(message = "Username field cannot be blank")
+    // @NotBlank(message = "Username field cannot be blank")
     private String username;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-//    @ValidPassword()
-//    @NotBlank(message = "Password field cannot be blank")
-//    @NotNull(message = "Password field cannot be null")
+    // @ValidPassword()
+    // @NotBlank(message = "Password field cannot be blank")
+    // @NotNull(message = "Password field cannot be null")
     private String password;
 
     private LocalDate dateOfBirth;
@@ -85,17 +69,16 @@ public class Admin implements Serializable {
     @Column(insertable = false)
     private LocalDateTime lastModifiedDate;
 
-//    @Email(message = "Please provide a valid email address")
-//    @NotBlank(message = "Email field cannot be blank")
+    // @Email(message = "Please provide a valid email address")
+    // @NotBlank(message = "Email field cannot be blank")
     private String email;
 
-//    @ManyToMany(fetch = FetchType.EAGER)
-//    private Set<UserRole> roles = new HashSet<>();
+    // @ManyToMany(fetch = FetchType.EAGER)
+    // private Set<UserRole> roles = new HashSet<>();
 
     @Column
     private boolean accountLocked;
     @Column
     private boolean enabled;
-
 
 }

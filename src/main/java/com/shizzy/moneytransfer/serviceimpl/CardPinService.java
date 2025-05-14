@@ -16,7 +16,7 @@ public class CardPinService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public ApiResponse<String> setCardPin(Integer cardId, String pin) {
+    public ApiResponse<String> setCardPin(Long cardId, String pin) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found with id " + cardId));
 
@@ -30,7 +30,7 @@ public class CardPinService {
                 .build();
     }
 
-    public boolean validatePin(Integer cardId, String enteredPin) {
+    public boolean validatePin(Long cardId, String enteredPin) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found with id " + cardId));
         return passwordEncoder.matches(enteredPin, card.getPin());

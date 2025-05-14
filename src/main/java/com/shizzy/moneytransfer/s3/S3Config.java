@@ -1,6 +1,5 @@
 package com.shizzy.moneytransfer.s3;
 
-import com.shizzy.moneytransfer.config.KeyVaultSecretProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,41 +17,19 @@ public class S3Config {
     @Value("${aws.region:eu-west-1}")
     private String awsRegion;
 
-    private final KeyVaultSecretProvider secretProvider;
+    @Value("${aws.access-key-id}")
+    private String awsAccessKeyId;
 
-    public S3Config(KeyVaultSecretProvider secretProvider) {
-        this.secretProvider = secretProvider;
-    }
+    @Value("${aws.secret-access-key}")
+    private String awsSecretAccessKey;
+
+    
 
     @Bean
     public S3Client s3Client() {
         try {
-            String awsAccessKeyId = secretProvider.getSecret("aws-access-key-id");
-            String awsSecretAccessKey = secretProvider.getSecret("aws-secret-access-key");
-
-            log.info("Attempting to configure S3 client for region: {}", awsRegion);
-
-            if (awsAccessKeyId != null && !awsAccessKeyId.isEmpty() &&
-                    awsSecretAccessKey != null && !awsSecretAccessKey.isEmpty()) {
-
-                log.info("Successfully retrieved AWS credentials from Key Vault");
-
-                // Create credentials provider
-                AwsBasicCredentials credentials = AwsBasicCredentials.create(
-                        awsAccessKeyId,
-                        awsSecretAccessKey);
-
-                // Return client with credentials
-                return S3Client.builder()
-                        .region(Region.of(awsRegion))
-                        .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                        .build();
-            } else {
-                log.warn("Key Vault secrets not found or empty, checking environment variables");
-
-                // Check environment variables directly as a last resort
-                String envAccessKey = System.getenv("AWS_ACCESS_KEY_ID");
-                String envSecretKey = System.getenv("AWS_SECRET_ACCESS_KEY");
+                String envAccessKey = awsAccessKeyId;
+                String envSecretKey = awsSecretAccessKey;
 
                 if (envAccessKey != null && !envAccessKey.isEmpty() &&
                         envSecretKey != null && !envSecretKey.isEmpty()) {
@@ -72,7 +49,7 @@ public class S3Config {
                 return S3Client.builder()
                         .region(Region.of(awsRegion))
                         .build();
-            }
+            
         } catch (Exception e) {
             log.error("Error configuring S3 client: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to configure S3 client: " + e.getMessage(), e);

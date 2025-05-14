@@ -35,7 +35,7 @@ class CardPinServiceTest {
     private CardPinService cardPinService;
 
     private Card card;
-    private final Integer CARD_ID = 1;
+    private final Long CARD_ID = 1L;
     private final String PIN = "1234";
     private final String ENCODED_PIN = "encodedPin123";
 
@@ -77,6 +77,6 @@ class CardPinServiceTest {
         // Verify
         verify(cardRepository).findById(CARD_ID);
         verify(passwordEncoder, never()).encode(anyString());
-        verify(cardRepository, never()).createPin(anyInt(), anyString());
+        verify(cardRepository, never()).createPin(anyLong(), anyString());
     }
 }

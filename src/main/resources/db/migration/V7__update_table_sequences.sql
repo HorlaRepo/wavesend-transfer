@@ -1,0 +1,19 @@
+-- Create sequences for tables using IDENTITY generation strategy
+CREATE SEQUENCE IF NOT EXISTS bank_accounts_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS card_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS wallet_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS user_beneficiary_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS daily_transaction_totals_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS scheduled_transfers_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS flagged_transaction_reason_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS refund_impact_records_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS transaction_reference_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS security_questions_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS user_notification_preferences_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS user_account_limits_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS user_profile_image_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS kyc_verification_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS beneficiary_ai_suggestion_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS account_limits_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS mobile_money_option_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS payment_method_seq START 1;

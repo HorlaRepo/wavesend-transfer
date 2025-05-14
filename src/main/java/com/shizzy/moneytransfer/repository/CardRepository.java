@@ -9,11 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-public interface CardRepository extends JpaRepository<Card, Integer> {
+public interface CardRepository extends JpaRepository<Card, Long> {
     List<Card> findCardByWalletId(Long walletId);
 
     @Transactional
     @Modifying
     @Query("UPDATE Card c SET c.pin = :pin, c.isLocked = false  WHERE c.id = :cardId")
-    void createPin(@Param("cardId") Integer cardId, @Param("pin") String pin);
+    void createPin(@Param("cardId") Long cardId, @Param("pin") String pin);
 }

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -242,54 +243,59 @@ public class AccountLimitServiceImpl implements AccountLimitService {
     @PostConstruct
     public void initializeDefaultLimits() {
         // Check if limits already exist
-        if (accountLimitRepository.count() > 0) {
-            log.info("Account limits already initialized, skipping...");
-            return;
-        }
+        // if (accountLimitRepository.count() > 0) {
+        //     log.info("Account limits already initialized, skipping...");
+        //     return;
+        // }
 
-        log.info("Initializing default account limits...");
+        // log.info("Initializing default account limits...");
+        // LocalDateTime now = LocalDateTime.now();
 
-        // Unverified - Very limited
-        AccountLimit unverifiedLimits = new AccountLimit();
-        unverifiedLimits.setVerificationLevel(VerificationLevel.UNVERIFIED);
-        unverifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(200));
-        unverifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(500));
-        unverifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(100));
-        unverifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(50));
-        unverifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(100));
-        accountLimitRepository.save(unverifiedLimits);
+        // // Unverified - Very limited
+        // AccountLimit unverifiedLimits = new AccountLimit();
+        // unverifiedLimits.setVerificationLevel(VerificationLevel.UNVERIFIED);
+        // unverifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(200));
+        // unverifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(500));
+        // unverifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(100));
+        // unverifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(50));
+        // unverifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(100));
+        // unverifiedLimits.setCreatedDate(now); // Set the created date
+        // accountLimitRepository.save(unverifiedLimits);
 
-        // Email Verified - Basic limits
-        AccountLimit emailVerifiedLimits = new AccountLimit();
-        emailVerifiedLimits.setVerificationLevel(VerificationLevel.EMAIL_VERIFIED);
-        emailVerifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(500));
-        emailVerifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(1000));
-        emailVerifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(300));
-        emailVerifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(200));
-        emailVerifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(500));
-        accountLimitRepository.save(emailVerifiedLimits);
+        // // Email Verified - Basic limits
+        // AccountLimit emailVerifiedLimits = new AccountLimit();
+        // emailVerifiedLimits.setVerificationLevel(VerificationLevel.EMAIL_VERIFIED);
+        // emailVerifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(500));
+        // emailVerifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(1000));
+        // emailVerifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(300));
+        // emailVerifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(200));
+        // emailVerifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(500));
+        // emailVerifiedLimits.setCreatedDate(now); // Set the created date
+        // accountLimitRepository.save(emailVerifiedLimits);
 
-        // ID Verified - Higher limits
-        AccountLimit idVerifiedLimits = new AccountLimit();
-        idVerifiedLimits.setVerificationLevel(VerificationLevel.ID_VERIFIED);
-        idVerifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(5000));
-        idVerifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(10000));
-        idVerifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(3000));
-        idVerifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(2000));
-        idVerifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(5000));
-        accountLimitRepository.save(idVerifiedLimits);
+        // // ID Verified - Higher limits
+        // AccountLimit idVerifiedLimits = new AccountLimit();
+        // idVerifiedLimits.setVerificationLevel(VerificationLevel.ID_VERIFIED);
+        // idVerifiedLimits.setDailyTransactionLimit(BigDecimal.valueOf(5000));
+        // idVerifiedLimits.setMaxWalletBalance(BigDecimal.valueOf(10000));
+        // idVerifiedLimits.setMaxDepositAmount(BigDecimal.valueOf(3000));
+        // idVerifiedLimits.setMaxWithdrawalAmount(BigDecimal.valueOf(2000));
+        // idVerifiedLimits.setMaxTransferAmount(BigDecimal.valueOf(5000));
+        // idVerifiedLimits.setCreatedDate(now); // Set the created date
+        // accountLimitRepository.save(idVerifiedLimits);
 
-        // Fully Verified - Unlimited
-        AccountLimit fullyVerifiedLimits = new AccountLimit();
-        fullyVerifiedLimits.setVerificationLevel(VerificationLevel.FULLY_VERIFIED);
-        fullyVerifiedLimits.setDailyTransactionLimit(null); // null represents unlimited
-        fullyVerifiedLimits.setMaxWalletBalance(null);
-        fullyVerifiedLimits.setMaxDepositAmount(null);
-        fullyVerifiedLimits.setMaxWithdrawalAmount(null);
-        fullyVerifiedLimits.setMaxTransferAmount(null);
-        accountLimitRepository.save(fullyVerifiedLimits);
+        // // Fully Verified - Unlimited
+        // AccountLimit fullyVerifiedLimits = new AccountLimit();
+        // fullyVerifiedLimits.setVerificationLevel(VerificationLevel.FULLY_VERIFIED);
+        // fullyVerifiedLimits.setDailyTransactionLimit(null); // null represents unlimited
+        // fullyVerifiedLimits.setMaxWalletBalance(null);
+        // fullyVerifiedLimits.setMaxDepositAmount(null);
+        // fullyVerifiedLimits.setMaxWithdrawalAmount(null);
+        // fullyVerifiedLimits.setMaxTransferAmount(null);
+        // fullyVerifiedLimits.setCreatedDate(now); // Set the created date
+        // accountLimitRepository.save(fullyVerifiedLimits);
 
-        log.info("Default account limits initialized successfully.");
+        // log.info("Default account limits initialized successfully.");
     }
 
     /**

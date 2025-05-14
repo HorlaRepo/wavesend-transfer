@@ -30,28 +30,28 @@ public class CardController {
     }
 
     @PostMapping("/lock/{id}")
-    public ApiResponse<String> lockCard(@PathVariable("id") Integer cardId) {
+    public ApiResponse<String> lockCard(@PathVariable("id") Long cardId) {
         return cardService.lockCard(cardId);
     }
 
     @PostMapping("/unlock/{id}")
-    public ApiResponse<String> unlockCard(@PathVariable("id") Integer cardId) {
+    public ApiResponse<String> unlockCard(@PathVariable("id") Long cardId) {
         return cardService.unlockCard(cardId);
     }
 
     @PutMapping("/set-pin/{id}")
-    public ApiResponse<String> setCardPin(@PathVariable("id") Integer cardId, @Valid @RequestBody PinRequest pin) {
+    public ApiResponse<String> setCardPin(@PathVariable("id") Long cardId, @Valid @RequestBody PinRequest pin) {
         System.out.println(pin.getPin());
         return cardService.setCardPin(cardId, pin.getPin());
     }
 
     @PostMapping("/verify-pin/{cardId}")
-    public boolean verifyPin(@PathVariable Integer cardId, @RequestBody PinRequest pin) {
+    public boolean verifyPin(@PathVariable Long cardId, @RequestBody PinRequest pin) {
         return cardService.checkPin(cardId, pin.getPin());
     }
 
     @DeleteMapping("/delete/{cardId}")
-    public ApiResponse<String> deleteCard(@PathVariable Integer cardId) {
+    public ApiResponse<String> deleteCard(@PathVariable Long cardId) {
         return cardService.deleteCard(cardId);
     }
 }
