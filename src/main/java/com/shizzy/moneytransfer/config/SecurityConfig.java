@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         "/test-keyvault",
                                         "/transactions",
+                                        "/system/redis-test"
                                         "/health/**",
                                         "/beneficiaries/**",
                                         "/keycloak/**",
