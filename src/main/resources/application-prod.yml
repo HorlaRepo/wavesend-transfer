@@ -52,11 +52,12 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     properties:
-      sasl.mechanism: OAUTHBEARER
-      sasl.jaas.config: >-
-        org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
-      sasl.login.callback.handler.class: com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler
       security.protocol: SASL_SSL
+      sasl.mechanism: OAUTHBEARER
+      sasl.jaas.config: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
+      sasl.login.callback.handler.class: com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler
+      sasl.oauthbearer.token.endpoint.url: https://oauth2.googleapis.com/token
+      sasl.oauthbearer.scope: https://www.googleapis.com/auth/kafka
     consumer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
       group-id: notification_group
@@ -66,14 +67,16 @@ spring:
       properties:
         spring.json.trusted.packages: "com.shizzy.moneytransfer.dto"
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
-
     producer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
-
+  logging:
+    level:
+      org.apache.kafka: DEBUG
+      org.springframework.kafka: DEBUG
   jackson:
     serialization:
       write-dates-as-timestamps: false
