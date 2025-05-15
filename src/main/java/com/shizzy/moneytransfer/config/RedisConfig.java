@@ -85,40 +85,29 @@ public class RedisConfig {
             logger.info("Configuring Redis for profile: {}", activeProfile);
             logger.info("Connecting to Redis at {}:{} with SSL: {}", redisHost, redisPort, sslEnabled);
 
-            // Add extra debugging for connection issues
-            System.setProperty("io.lettuce.core.clientOptions", "DEBUG");
+            // Build client configuration with INCREASED timeouts
+            LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                    .commandTimeout(Duration.ofSeconds(5)) // Increase from default 600ms
+                    .shutdownTimeout(Duration.ofSeconds(5)) // Safe shutdown timeout
+                    .clientOptions(ClientOptions.builder()
+                            .socketOptions(SocketOptions.builder()
+                                    .connectTimeout(Duration.ofSeconds(5)) // Increase socket connect timeout
+                                    .build())
+                            .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
+                            .build())
+                    .build();
 
-            // Build client configuration with timeout and SSL settings
-            LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration
-                    .builder()
-                    .commandTimeout(Duration.ofMillis(timeout));
-
-            if (sslEnabled) {
-                logger.info("Enabling SSL for Redis connection");
-                clientConfigBuilder.useSsl();
-            }
-
-            // Create standard configuration (same for all environments)
+            // Use same Redis configuration
             RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
             redisConfig.setHostName(redisHost);
             redisConfig.setPort(redisPort);
 
-            // Set password if provided
+            // Set password only if provided and not empty
             if (redisPassword != null && !redisPassword.isEmpty()) {
                 redisConfig.setPassword(redisPassword);
-                logger.debug("Redis password configured");
-            } else {
-                logger.debug("No Redis password configured (expected for VPC access)");
             }
 
-            // Add client options for more reliable connections
-            clientConfigBuilder.clientOptions(
-                    ClientOptions.builder()
-                            .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
-                            .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
-                            .build());
-
-            return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
+            return new LettuceConnectionFactory(redisConfig, clientConfig);
         } catch (Exception e) {
             logger.error("Failed to configure Redis connection: {}", e.getMessage(), e);
             throw e;
