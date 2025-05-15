@@ -59,7 +59,7 @@ public class SecurityConfig {
                         auth -> auth
                                 .requestMatchers(
                                         "/test-keyvault",
-                                        "/transactions/**",
+                                        "/transactions",
                                         "/health/**",
                                         "/beneficiaries/**",
                                         "/keycloak/**",
