@@ -1,7 +1,7 @@
 server:
   port: 8080
   error:
-    include-message: never  # Changed for security in production
+    include-message: never # Changed for security in production
   servlet:
     context-path: /api/v1/
 
@@ -31,6 +31,7 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
+      auto-commit: false
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
@@ -40,7 +41,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    repair-on-migrate: false 
+    repair-on-migrate: false
 
   security:
     oauth2:
@@ -63,7 +64,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       auto-offset-reset: earliest
       properties:
-        spring.json.trusted.packages: 'com.shizzy.moneytransfer.dto'
+        spring.json.trusted.packages: "com.shizzy.moneytransfer.dto"
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
 
     producer:
@@ -94,7 +95,7 @@ spring:
         smtp:
           starttls:
             enable: true
-          trust: "${MAIL_HOST}"  # More restrictive in production
+          trust: "${MAIL_HOST}" # More restrictive in production
           socketFactory:
             port: 587
             class: javax.net.ssl.SSLSocketFactory
@@ -114,18 +115,19 @@ spring:
           order_updates: true
         # Connection handling
         connection:
-          provider_disables_autocommit: true
+          provider_disables_autocommit: true # Retain, but ensure HikariCP enforces it
         # Query optimizations
         query:
           in_clause_parameter_padding: true
           fail_on_pagination_over_collection_fetch: true
-        # Remove redundant SQL formatting in production
+        # SQL formatting
         format_sql: false
-        # Keep current ID generation settings
+        # ID generation
         id:
           new_generator_mappings: true
           optimizer.default_increment_size: 1
           sequence.increment_size_mismatch_strategy: fix
+        # Dialect
         dialect: org.hibernate.dialect.PostgreSQLDialect
         # Statement caching
         generate_statistics: false
@@ -155,12 +157,12 @@ spring:
       url: ${REDIS_URL}
       ssl:
         enabled: true
-      timeout: 600  # Added for production
+      timeout: 600 # Added for production
       enabled: true
 
 cache:
   config:
-    entryTtl: 300  # Longer TTL in production
+    entryTtl: 300 # Longer TTL in production
     transactions:
       entryTtl: 300
     wallets:
@@ -185,7 +187,7 @@ springdoc:
   default-produces-media-type: application/json
   server-url: ${SPRINGDOC_SERVER_URL}
   api-docs:
-    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false} 
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
   swagger-ui:
     enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
 
