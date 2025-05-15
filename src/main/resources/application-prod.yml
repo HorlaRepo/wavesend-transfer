@@ -55,6 +55,9 @@ spring:
       sasl.mechanism: OAUTHBEARER
       sasl.jaas.config: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
       sasl.login.callback.handler.class: com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler
+      retry.backoff.ms: 1000
+      reconnect.backoff.ms: 1000
+      reconnect.backoff.max.ms: 5000
     
     consumer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
@@ -72,6 +75,9 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+    listener:
+      auth-exception-retry-interval: 10000
 
   logging:
     level:
