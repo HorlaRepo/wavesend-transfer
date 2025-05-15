@@ -9,6 +9,7 @@ import com.shizzy.moneytransfer.util.CacheNames;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.TimeoutOptions;
+import io.lettuce.core.protocol.ProtocolVersion;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,14 +88,18 @@ public class RedisConfig {
 
             // Build client configuration with INCREASED timeouts
             LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                    .commandTimeout(Duration.ofSeconds(5)) // Increase from default 600ms
-                    .shutdownTimeout(Duration.ofSeconds(5)) // Safe shutdown timeout
+                    .commandTimeout(Duration.ofSeconds(5))
+                    .shutdownTimeout(Duration.ofSeconds(5))
                     .clientOptions(ClientOptions.builder()
                             .socketOptions(SocketOptions.builder()
-                                    .connectTimeout(Duration.ofSeconds(5)) // Increase socket connect timeout
+                                    .connectTimeout(Duration.ofSeconds(5))
                                     .build())
                             .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
+                            // Disable CLIENT SETINFO which isn't supported
+                            .protocolVersion(ProtocolVersion.RESP2)
                             .build())
+                    // Don't set client name to avoid CLIENT commands
+                    .clientName(null)
                     .build();
 
             // Use same Redis configuration
@@ -102,7 +107,7 @@ public class RedisConfig {
             redisConfig.setHostName(redisHost);
             redisConfig.setPort(redisPort);
 
-            // Set password only if provided and not empty
+            // Password logic remains the same
             if (redisPassword != null && !redisPassword.isEmpty()) {
                 redisConfig.setPassword(redisPassword);
             }
