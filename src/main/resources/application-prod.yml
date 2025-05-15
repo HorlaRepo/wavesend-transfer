@@ -104,7 +104,7 @@ spring:
         smtp:
           starttls:
             enable: true
-          trust: "${MAIL_HOST}" # More restrictive in production
+          trust: "${MAIL_HOST}"
           socketFactory:
             port: 587
             class: javax.net.ssl.SSLSocketFactory
@@ -113,7 +113,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         # Performance optimizations
