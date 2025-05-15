@@ -25,14 +25,14 @@ spring:
       maximum-pool-size: 10            # Reduce from 15 to prevent resource exhaustion
       minimum-idle: 2                  # Reduce idle connections further
       connection-timeout: 20000        # Fail faster at 20s instead of 30s
-      idle-timeout: 180000             # 3 minutes instead of 5 minutes
-      max-lifetime: 300000             # 5 minutes - shorter to recycle connections more actively
+      idle-timeout: 120000             # 3 minutes instead of 5 minutes
+      max-lifetime: 240000             # 5 minutes - shorter to recycle connections more actively
       # Health checking
       connection-test-query: SELECT 1  # Keep this
       validation-timeout: 3000         # Faster validation (3s)
       leak-detection-threshold: 60000  # Good setting
       # Critical for Cloud Run
-      keepalive-time: 30000            # Every 30s instead of 60s
+      keepalive-time: 20000            # Every 30s instead of 60s
       initialization-fail-timeout: 0   # Keep this
       # Monitoring
       register-mbeans: true            # Keep this
