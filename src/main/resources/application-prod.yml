@@ -32,13 +32,17 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       auto-commit: false
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 15            # Increase from 10
+      minimum-idle: 3                  # Decrease to reduce idle connections
       connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      idle-timeout: 300000             # Decrease to 5 minutes to release idle connections faster
+      max-lifetime: 600000             # Decrease to 10 minutes to recycle connections more frequently
       connection-test-query: SELECT 1
+      validation-timeout: 5000         # Add validation timeout
+      leak-detection-threshold: 60000  # Add leak detection (60 seconds)
       initialization-fail-timeout: 0
+      keepalive-time: 60000            # Add keepalive (every 60 seconds)
+      register-mbeans: true  
 
   flyway:
     enabled: true
