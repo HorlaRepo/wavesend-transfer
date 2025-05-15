@@ -77,8 +77,6 @@ public class RedisConfig {
     @Value("${spring.profiles.active:default}")
     private String activeProfile;
 
-    // @Value("${spring.data.redis.url}")
-    // private String redisUrl;
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
