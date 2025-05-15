@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -33,6 +37,9 @@ public class SystemController {
 
     @Value("${spring.kafka.bootstrap-servers:not-configured}")
     private String kafkaServers;
+
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
 
     public SystemController(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -116,6 +123,74 @@ public class SystemController {
             results.put("local_ip", InetAddress.getLocalHost().getHostAddress());
         } catch (Exception e) {
             results.put("local_ip_error", e.getMessage());
+        }
+
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/redis-debug")
+    public ResponseEntity<Map<String, Object>> debugRedis() {
+        Map<String, Object> results = new HashMap<>();
+
+        // Configuration
+        boolean sslEnabled = false;
+        try {
+            Object factory = redisTemplate.getConnectionFactory();
+            // LettuceConnectionFactory supports getClientConfiguration().isUseSsl()
+            if (factory != null && factory.getClass().getName().contains("LettuceConnectionFactory")) {
+                // Use reflection to avoid direct dependency
+                java.lang.reflect.Method getClientConfig = factory.getClass().getMethod("getClientConfiguration");
+                Object clientConfig = getClientConfig.invoke(factory);
+                java.lang.reflect.Method isUseSsl = clientConfig.getClass().getMethod("isUseSsl");
+                sslEnabled = (Boolean) isUseSsl.invoke(clientConfig);
+            }
+        } catch (Exception ex) {
+            logger.warn("Could not determine SSL status for Redis: {}", ex.getMessage());
+        }
+        results.put("config", Map.of(
+                "redis_host", redisHost,
+                "redis_port", redisPort,
+                "redis_password_set", redisPassword != null && !redisPassword.isEmpty(),
+                "ssl_enabled", sslEnabled));
+
+        // 1. Try socket connection first
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(redisHost, redisPort), 3000);
+            results.put("socket_connected", socket.isConnected());
+        } catch (Exception e) {
+            results.put("socket_error", e.getMessage());
+        }
+
+        // 2. Try raw Redis protocol
+        try (Socket socket = new Socket(redisHost, redisPort);
+                OutputStream out = socket.getOutputStream();
+                InputStream in = socket.getInputStream()) {
+
+            // Send PING command
+            out.write("*1\r\n$4\r\nPING\r\n".getBytes());
+            out.flush();
+
+            // Read response
+            byte[] buffer = new byte[1024];
+            int bytesRead = in.read(buffer);
+            String response = new String(buffer, 0, bytesRead);
+
+            results.put("raw_ping", response);
+        } catch (Exception e) {
+            results.put("raw_ping_error", e.getMessage());
+        }
+
+        // 3. Try with Redis client
+        try {
+            RedisConnection conn = redisTemplate.getConnectionFactory().getConnection();
+            String pong = new String(conn.ping());
+            results.put("client_ping", pong);
+        } catch (Exception e) {
+            results.put("client_error", e.getMessage());
+            results.put("client_error_cause", e.getCause() != null ? e.getCause().getMessage() : "No cause");
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            results.put("stack_trace", sw.toString());
         }
 
         return ResponseEntity.ok(results);

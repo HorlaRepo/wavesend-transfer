@@ -85,6 +85,9 @@ public class RedisConfig {
             logger.info("Configuring Redis for profile: {}", activeProfile);
             logger.info("Connecting to Redis at {}:{} with SSL: {}", redisHost, redisPort, sslEnabled);
 
+            // Add extra debugging for connection issues
+            System.setProperty("io.lettuce.core.clientOptions", "DEBUG");
+
             // Build client configuration with timeout and SSL settings
             LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration
                     .builder()
@@ -108,7 +111,13 @@ public class RedisConfig {
                 logger.debug("No Redis password configured (expected for VPC access)");
             }
 
-            // Return connection factory with the configuration
+            // Add client options for more reliable connections
+            clientConfigBuilder.clientOptions(
+                    ClientOptions.builder()
+                            .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
+                            .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
+                            .build());
+
             return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
         } catch (Exception e) {
             logger.error("Failed to configure Redis connection: {}", e.getMessage(), e);
