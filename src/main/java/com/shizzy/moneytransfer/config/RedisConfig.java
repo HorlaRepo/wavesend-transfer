@@ -83,7 +83,9 @@ public class RedisConfig {
     public LettuceConnectionFactory redisConnectionFactory() {
         try {
             logger.info("Configuring Redis for profile: {}", activeProfile);
+            logger.info("Connecting to Redis at {}:{} with SSL: {}", redisHost, redisPort, sslEnabled);
 
+            // Build client configuration with timeout and SSL settings
             LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration
                     .builder()
                     .commandTimeout(Duration.ofMillis(timeout));
@@ -93,30 +95,21 @@ public class RedisConfig {
                 clientConfigBuilder.useSsl();
             }
 
-            // For production, use the URI approach
-            if ("prod".equals(activeProfile) || "production".equals(activeProfile)) {
-                String uri = redisUrl;
-                logger.info("Using Redis URI connection for production: {}", uri.replaceAll(":[^:@]+@", ":****@"));
+            // Create standard configuration (same for all environments)
+            RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+            redisConfig.setHostName(redisHost);
+            redisConfig.setPort(redisPort);
 
-                return new LettuceConnectionFactory(
-                        LettuceConnectionFactory.createRedisConfiguration(uri),
-                        clientConfigBuilder.build());
+            // Set password if provided
+            if (redisPassword != null && !redisPassword.isEmpty()) {
+                redisConfig.setPassword(redisPassword);
+                logger.debug("Redis password configured");
+            } else {
+                logger.debug("No Redis password configured (expected for VPC access)");
             }
-            // For local, use the traditional approach
-            else {
-                logger.info("Connecting to Redis at {}:{}", redisHost, redisPort);
 
-                RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
-                redisConfig.setHostName(redisHost);
-                redisConfig.setPort(redisPort);
-
-                if (redisPassword != null && !redisPassword.isEmpty()) {
-                    redisConfig.setPassword(redisPassword);
-                    logger.debug("Redis password configured");
-                }
-
-                return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
-            }
+            // Return connection factory with the configuration
+            return new LettuceConnectionFactory(redisConfig, clientConfigBuilder.build());
         } catch (Exception e) {
             logger.error("Failed to configure Redis connection: {}", e.getMessage(), e);
             throw e;

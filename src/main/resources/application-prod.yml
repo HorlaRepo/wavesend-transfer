@@ -157,8 +157,6 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
-      url: ${REDIS_URL}
       ssl:
         enabled: true
       timeout: 600 # Added for production
