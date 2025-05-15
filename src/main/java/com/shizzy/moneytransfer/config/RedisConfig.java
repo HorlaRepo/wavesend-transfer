@@ -97,7 +97,6 @@ public class RedisConfig {
                             .protocolVersion(ProtocolVersion.RESP2)
                             .build())
                     // Don't set client name to avoid CLIENT commands
-                    .clientName(null)
                     .build();
 
             // Use same Redis configuration
