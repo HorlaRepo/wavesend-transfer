@@ -53,5 +53,6 @@ jobs:
         service: ${{ env.SERVICE_NAME }}
         region: ${{ env.REGION }}
         image: ${{ env.REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        traffic: 100
         env_vars: |
           SPRING_PROFILES_ACTIVE=prod

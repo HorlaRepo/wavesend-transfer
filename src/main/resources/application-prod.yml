@@ -37,6 +37,8 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+      connection-test-query: SELECT 1
+      initialization-fail-timeout: 0
 
   flyway:
     enabled: true
@@ -130,8 +132,6 @@ spring:
           new_generator_mappings: true
           optimizer.default_increment_size: 1
           sequence.increment_size_mismatch_strategy: fix
-        # Dialect
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         # Statement caching
         generate_statistics: false
     show-sql: false
