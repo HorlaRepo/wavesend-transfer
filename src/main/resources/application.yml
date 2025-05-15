@@ -143,6 +143,7 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      url: ${REDIS_URL}
 
 cache:
   config:
