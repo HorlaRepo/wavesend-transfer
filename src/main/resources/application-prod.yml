@@ -20,22 +20,15 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
-      # Critical settings for Cloud Run
       auto-commit: false
-      maximum-pool-size: 10            # Reduce from 15 to prevent resource exhaustion
-      minimum-idle: 2                  # Reduce idle connections further
-      connection-timeout: 20000        # Fail faster at 20s instead of 30s
-      idle-timeout: 120000             # 3 minutes instead of 5 minutes
-      max-lifetime: 240000             # 5 minutes - shorter to recycle connections more actively
-      # Health checking
-      connection-test-query: SELECT 1  # Keep this
-      validation-timeout: 3000         # Faster validation (3s)
-      leak-detection-threshold: 60000  # Good setting
-      # Critical for Cloud Run
-      keepalive-time: 20000            # Every 30s instead of 60s
-      initialization-fail-timeout: 0   # Keep this
-      # Monitoring
-      register-mbeans: true            # Keep this
+      maximum-pool-size: 8  # Reduced to avoid overloading Cloud SQL
+      minimum-idle: 2  # Fewer idle connections to minimize timeouts
+      connection-timeout: 20000  # 20 seconds
+      idle-timeout: 300000  # 5 minutes
+      max-lifetime: 600000  # 10 minutes, shorter to avoid Cloud SQL timeouts
+      initialization-fail-timeout: 0
+      validation-timeout: 5000  # 5 seconds for validation
+      leak-detection-threshold: 60000
 
   flyway:
     enabled: true
@@ -83,7 +76,11 @@ spring:
     level:
       org.apache.kafka: DEBUG
       org.springframework.kafka: DEBUG
-  jackson:
+      org.hibernate: DEBUG
+      org.postgresql: DEBUG
+      com.zaxxer.hikari: DEBUG
+      com.shizzy.moneytransfer: DEBUG
+    jackson:
     serialization:
       write-dates-as-timestamps: false
     date-format: "yyyy-MM-dd HH:mm:ss"
