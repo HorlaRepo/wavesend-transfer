@@ -14,35 +14,28 @@ cors:
 spring:
   application:
     name: wavesend
-  # cloud:
-  #   azure:
-  #     keyvault:
-  #       secret:
-  #         enabled: true
-  #     credential:
-  #       managed-identity-enabled: false
-  #       client-id: ${AZURE_CLIENT_ID}
-  #       client-secret: ${AZURE_CLIENT_SECRET}
-  #     profile:
-  #       tenant-id: ${AZURE_TENANT_ID}
 
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
+      # Critical settings for Cloud Run
       auto-commit: false
-      maximum-pool-size: 15            # Increase from 10
-      minimum-idle: 3                  # Decrease to reduce idle connections
-      connection-timeout: 30000
-      idle-timeout: 300000             # Decrease to 5 minutes to release idle connections faster
-      max-lifetime: 600000             # Decrease to 10 minutes to recycle connections more frequently
-      connection-test-query: SELECT 1
-      validation-timeout: 5000         # Add validation timeout
-      leak-detection-threshold: 60000  # Add leak detection (60 seconds)
-      initialization-fail-timeout: 0
-      keepalive-time: 60000            # Add keepalive (every 60 seconds)
-      register-mbeans: true  
+      maximum-pool-size: 10            # Reduce from 15 to prevent resource exhaustion
+      minimum-idle: 2                  # Reduce idle connections further
+      connection-timeout: 20000        # Fail faster at 20s instead of 30s
+      idle-timeout: 180000             # 3 minutes instead of 5 minutes
+      max-lifetime: 300000             # 5 minutes - shorter to recycle connections more actively
+      # Health checking
+      connection-test-query: SELECT 1  # Keep this
+      validation-timeout: 3000         # Faster validation (3s)
+      leak-detection-threshold: 60000  # Good setting
+      # Critical for Cloud Run
+      keepalive-time: 30000            # Every 30s instead of 60s
+      initialization-fail-timeout: 0   # Keep this
+      # Monitoring
+      register-mbeans: true            # Keep this
 
   flyway:
     enabled: true
@@ -62,8 +55,7 @@ spring:
       sasl.mechanism: OAUTHBEARER
       sasl.jaas.config: org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required;
       sasl.login.callback.handler.class: com.google.cloud.hosted.kafka.auth.GcpLoginCallbackHandler
-      sasl.oauthbearer.token.endpoint.url: https://oauth2.googleapis.com/token
-      sasl.oauthbearer.scope: https://www.googleapis.com/auth/kafka
+    
     consumer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
       group-id: notification_group
@@ -73,12 +65,14 @@ spring:
       properties:
         spring.json.trusted.packages: "com.shizzy.moneytransfer.dto"
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
     producer:
       bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
   logging:
     level:
       org.apache.kafka: DEBUG
