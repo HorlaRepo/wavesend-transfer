@@ -14,7 +14,6 @@ import com.shizzy.moneytransfer.enums.TransactionType;
 import com.shizzy.moneytransfer.exception.*;
 import com.shizzy.moneytransfer.model.*;
 import com.shizzy.moneytransfer.repository.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

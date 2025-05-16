@@ -17,7 +17,7 @@ public class KeycloakConfig {
     @Value("${keycloak.client.secret:}")
     private String clientSecret;
     
-    @Value("${keycloak.server-url:http://localhost:8080}")
+    @Value("${keycloak.server-url:http://localhost:9090}")
     private String serverUrl;
     
     @Value("${keycloak.realm:wavesend}")

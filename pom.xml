@@ -175,7 +175,6 @@
 			<version>1.0.5</version>
 		</dependency>
 
-	
 		<dependency>
 			<groupId>org.owasp</groupId>
 			<artifactId>dependency-check-maven</artifactId>
@@ -217,7 +216,7 @@
 		<dependency>
 			<groupId>com.stripe</groupId>
 			<artifactId>stripe-java</artifactId>
-			<version>20.62.0</version>
+			<version>29.1.0</version>
 		</dependency>
 
 		<dependency>

@@ -28,6 +28,8 @@ import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.ApiResource;
 import com.stripe.param.RefundCreateParams;
+
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -35,6 +37,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -50,6 +53,9 @@ import static com.shizzy.moneytransfer.enums.TransactionOperation.*;
 import static com.shizzy.moneytransfer.enums.TransactionSource.*;
 import static com.shizzy.moneytransfer.enums.TransactionStatus.*;
 import static com.shizzy.moneytransfer.enums.TransactionType.*;
+import static com.shizzy.moneytransfer.util.CacheNames.ALL_USER_TRANSACTION;
+import static com.shizzy.moneytransfer.util.CacheNames.SINGLE_TRANSACTION;
+import static com.shizzy.moneytransfer.util.CacheNames.TRANSACTIONS;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +76,18 @@ public class StripeService implements PaymentService {
     private final WalletService walletService;
     private final RefundImpactRecordRepository refundImpactRecordRepository;
     private static final Logger LOGGER = LoggerFactory.getLogger(StripeService.class);
+
+    @PostConstruct
+    public void init() {
+        // Initialize Stripe with API key from properties
+        try {
+            log.info("Initializing Stripe with API key starting with: {}",
+                    stripeApiKey.substring(0, Math.min(8, stripeApiKey.length())) + "...");
+            Stripe.apiKey = stripeApiKey;
+        } catch (Exception e) {
+            log.error("Failed to initialize Stripe: {}", e.getMessage());
+        }
+    }
 
     @Override
     public Mono<FlutterwaveResponse> getBanks(String country) {
@@ -102,14 +120,24 @@ public class StripeService implements PaymentService {
     }
 
     @Override
+    @CacheEvict(value = { TRANSACTIONS, SINGLE_TRANSACTION, ALL_USER_TRANSACTION }, allEntries = true)
     public ResponseEntity<String> handleWebhook(String payload) {
         return webhookService.handleWebhook(payload);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = { TRANSACTIONS, SINGLE_TRANSACTION, ALL_USER_TRANSACTION }, allEntries = true)
     public PaymentResponse createPayment(double amount, String email) throws Exception {
         try {
+
+            if (Stripe.apiKey == null) {
+                log.error("Stripe API key is null at payment creation time");
+                Stripe.apiKey = stripeApiKey; // Attempt to fix
+            } else {
+                log.info("Using Stripe API key starting with: {}...",
+                        Stripe.apiKey.substring(0, Math.min(8, Stripe.apiKey.length())));
+            }
             // Generate reference number
             String transactionReference = referenceService.generateUniqueReferenceNumber() + "-STRP";
 
@@ -149,7 +177,10 @@ public class StripeService implements PaymentService {
             // Return payment response
             return paymentProcessor.generatePaymentResponse(session, transactionReference);
         } catch (Exception e) {
-            log.error("Failed to create payment: {}", e.getMessage());
+            log.error("Failed to create payment: {} ({})", e.getMessage(), e.getClass().getName());
+            if (e.getCause() != null) {
+                log.error("  Caused by: {} ({})", e.getCause().getMessage(), e.getCause().getClass().getName());
+            }
             throw new PaymentException("Failed to create payment: " + e.getMessage());
         }
     }

@@ -3,7 +3,6 @@ package com.shizzy.moneytransfer.config;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.shizzy.moneytransfer.util.CacheNames;
 
 import io.lettuce.core.ClientOptions;
@@ -29,7 +28,6 @@ import org.springframework.data.redis.connection.lettuce.LettuceClientConfigurat
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.cache.interceptor.KeyGenerator;
@@ -93,10 +91,8 @@ public class RedisConfig {
                                     .connectTimeout(Duration.ofSeconds(5))
                                     .build())
                             .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
-                            // Disable CLIENT SETINFO which isn't supported
                             .protocolVersion(ProtocolVersion.RESP2)
                             .build())
-                    // Don't set client name to avoid CLIENT commands
                     .build();
 
             // Use same Redis configuration
@@ -117,7 +113,7 @@ public class RedisConfig {
     }
 
     /**
-     * Create a specialized ObjectMapper for Redis that includes type information
+     * Specialized ObjectMapper for Redis that includes type information
      */
     @Bean("redisObjectMapper")
     public ObjectMapper redisObjectMapper() {
@@ -133,7 +129,7 @@ public class RedisConfig {
     }
 
     /**
-     * Create a consistent GenericJackson2JsonRedisSerializer using our configured
+     * Consistent GenericJackson2JsonRedisSerializer using our configured
      * redisObjectMapper
      */
     @Bean
@@ -153,12 +149,12 @@ public class RedisConfig {
         final RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(lettuceConnectionFactory);
 
-        // Use StringRedisSerializer for keys
+        // StringRedisSerializer for keys
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
         redisTemplate.setKeySerializer(stringSerializer);
         redisTemplate.setHashKeySerializer(stringSerializer);
 
-        // Use our consistent serializer for values
+        // serializer for values
         redisTemplate.setValueSerializer(redisSerializer);
         redisTemplate.setHashValueSerializer(redisSerializer);
 

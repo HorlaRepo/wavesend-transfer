@@ -42,16 +42,16 @@ public class StripePaymentProcessor {
         public Session createCheckoutSession(String email, BigDecimal amount,
                         String reference, String userId) throws PaymentException {
 
-                // Validate against deposit limits
-                transactionLimitService.validateDeposit(userId, amount);
+                        // Validate against deposit limits
+                        transactionLimitService.validateDeposit(userId, amount);
 
-                // Calculate new balance after deposit
-                Optional<Wallet> wallet = Optional.of(walletRepository.findWalletByCreatedBy(userId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found")));
-                BigDecimal newBalance = wallet.get().getBalance().add(amount);
+                        // Calculate new balance after deposit
+                        Optional<Wallet> wallet = Optional.of(walletRepository.findWalletByCreatedBy(userId)
+                                        .orElseThrow(() -> new ResourceNotFoundException("Wallet not found")));
+                        BigDecimal newBalance = wallet.get().getBalance().add(amount);
 
-                // Validate against max balance limit
-                transactionLimitService.validateNewBalance(userId, newBalance);
+                        // Validate against max balance limit
+                        transactionLimitService.validateNewBalance(userId, newBalance);
 
                 try {
                         Stripe.apiKey = stripeApiKey;
@@ -90,9 +90,19 @@ public class StripePaymentProcessor {
 
                         return Session.create(params, options);
                 } catch (StripeException e) {
-                        log.error("Failed to create payment session: {}", e.getMessage());
+                        log.error("Failed to create payment session: {} - Type: {}, Code: {}",
+                                        e.getMessage(), e.getClass().getSimpleName(),
+                                        e instanceof StripeException ? ((StripeException) e).getCode() : "unknown");
                         throw new PaymentException("Failed to create payment session: " + e.getMessage());
                 }
+
+                // } catch (StripeException e) {
+                // log.error("Failed to create payment session: {} - Type: {}, Code: {}",
+                // e.getMessage(), e.getClass().getSimpleName(),
+                // e instanceof StripeException ? ((StripeException) e).getCode() : "unknown");
+                // throw new PaymentException("Failed to create payment session: " +
+                // e.getMessage());
+                // }
 
         }
 

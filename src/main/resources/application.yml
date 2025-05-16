@@ -206,7 +206,7 @@ termii:
 keycloak:
   event-listener:
     endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
-    endpoint-url: https://6461-2c0f-2a80-73-f910-1c93-ce14-a073-58c2.ngrok-free.app
+    endpoint-url: https://d6c6-2c0f-2a80-1c-8a10-cd8-ec6f-caa2-a883.ngrok-free.app
   client:
     id: ${KEYCLOAK_CLIENT_ID}
     secret: ${KEYCLOAK_CLIENT_SECRET}
