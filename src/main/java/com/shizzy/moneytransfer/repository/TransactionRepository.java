@@ -21,27 +21,37 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
     Optional<Transaction> findTransactionByMtcn(String mtcn);
+
     List<Transaction> findTransactionByReferenceNumber(String referenceNumber);
+
     List<Transaction> findTransactionByWalletId(Long wallet_id);
+
     List<Transaction> findByWalletIdAndOperation(Long walletId, TransactionOperation operation);
 
     Page<Transaction> findAll(Specification<Transaction> specification, Pageable pageable);
 
     List<Transaction> findByWalletIdAndOperationAndRefundStatusNotOrderByTransactionDateAsc(
-    Long walletId, 
-    TransactionOperation operation, 
-    RefundStatus refundStatus);
+            Long walletId,
+            TransactionOperation operation,
+            RefundStatus refundStatus);
+
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.flaggedTransactionReasons WHERE t.referenceNumber = :referenceNumber")
+    Optional<Transaction> findByReferenceNumberWithFlaggedReasons(@Param("referenceNumber") String referenceNumber);
 
     @Query("SELECT t FROM Transaction t WHERE (t.wallet = :userWallet) " +
             "AND t.transactionDate BETWEEN :startDate AND :endDate")
-    Page<Transaction> findTransactionsByWalletIdAndDateRange(Wallet userWallet, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    List<Transaction> findTransactionsByWalletAndTransactionDateBetween(Wallet userWallet, LocalDateTime startDate, LocalDateTime endDate);
+    Page<Transaction> findTransactionsByWalletIdAndDateRange(Wallet userWallet, LocalDateTime startDate,
+            LocalDateTime endDate, Pageable pageable);
+
+    List<Transaction> findTransactionsByWalletAndTransactionDateBetween(Wallet userWallet, LocalDateTime startDate,
+            LocalDateTime endDate);
 
     @Query("SELECT t FROM Transaction t WHERE t.wallet = :wallet ")
     Page<Transaction> findTransactionsByWallet(Wallet wallet, Pageable pageable);
 
     @Query("SELECT t FROM Transaction t WHERE t.wallet.walletId = :walletId AND t.operation = :operation AND t.transactionDate > :recentDate")
-    List<Transaction> findRecentTransactions(@Param("walletId") String walletId, @Param("operation") TransactionOperation operation, @Param("recentDate") LocalDateTime recentDate);
+    List<Transaction> findRecentTransactions(@Param("walletId") String walletId,
+            @Param("operation") TransactionOperation operation, @Param("recentDate") LocalDateTime recentDate);
 
     @Query("SELECT AVG(t.amount) FROM Transaction t WHERE t.wallet.walletId = :walletId")
     BigDecimal getAverageTransactionAmount(@Param("walletId") String walletId);
@@ -49,12 +59,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     @Query("SELECT MAX(t.transactionDate) FROM Transaction t WHERE t.wallet.walletId = :walletId")
     LocalDateTime findLastTransactionDate(@Param("walletId") String walletId);
 
-    List<Transaction>findByWalletIdAndOperationAndRefundStatusNot(Long walletId, TransactionOperation transactionOperation, RefundStatus refundStatus);
+    List<Transaction> findByWalletIdAndOperationAndRefundStatusNot(Long walletId,
+            TransactionOperation transactionOperation, RefundStatus refundStatus);
 
-    Page<Transaction> findByWalletIdAndOperationAndTransactionTypeAndTransactionDateBetween(Long walletId, TransactionOperation operation, TransactionType transactionType, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    Page<Transaction> findByWalletIdAndOperationAndTransactionDateBetween(Long walletId, TransactionOperation operation, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    Page<Transaction> findByWalletIdAndOperationAndTransactionType(Long walletId, TransactionOperation operation, TransactionType transactionType, Pageable pageable);
+    Page<Transaction> findByWalletIdAndOperationAndTransactionTypeAndTransactionDateBetween(Long walletId,
+            TransactionOperation operation, TransactionType transactionType, LocalDateTime startDate,
+            LocalDateTime endDate, Pageable pageable);
+
+    Page<Transaction> findByWalletIdAndOperationAndTransactionDateBetween(Long walletId, TransactionOperation operation,
+            LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    Page<Transaction> findByWalletIdAndOperationAndTransactionType(Long walletId, TransactionOperation operation,
+            TransactionType transactionType, Pageable pageable);
+
     Page<Transaction> findByWalletIdAndOperation(Long walletId, TransactionOperation operation, Pageable pageable);
 }
-
-

@@ -1,5 +1,6 @@
 package com.shizzy.moneytransfer.serviceimpl;
 
+import com.itextpdf.text.pdf.PdfStructTreeController.returnType;
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.enums.RefundStatus;
 import com.shizzy.moneytransfer.service.WalletService;
@@ -463,4 +464,11 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+    @Override
+    public Transaction findByReferenceNumberWithFlaggedReasons(String referenceNumber) {
+        return transactionRepository.findByReferenceNumberWithFlaggedReasons(referenceNumber)
+            .orElse(null);
+    }
+
+    
 }

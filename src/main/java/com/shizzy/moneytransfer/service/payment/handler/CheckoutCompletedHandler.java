@@ -13,7 +13,14 @@ import com.shizzy.moneytransfer.service.TransactionService;
 import com.shizzy.moneytransfer.serviceimpl.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import static com.shizzy.moneytransfer.util.CacheNames.ALL_USER_TRANSACTION;
+import static com.shizzy.moneytransfer.util.CacheNames.SINGLE_TRANSACTION;
+import static com.shizzy.moneytransfer.util.CacheNames.TRANSACTIONS;
 
 import java.math.BigDecimal;
 
@@ -33,6 +40,8 @@ public class CheckoutCompletedHandler implements StripeEventHandler {
     }
 
     @Override
+    @Transactional
+    @CacheEvict(value = { TRANSACTIONS, SINGLE_TRANSACTION, ALL_USER_TRANSACTION }, allEntries = true)
     public void handleEvent(String eventData) {
         try {
             JsonNode rootNode = objectMapper.readTree(eventData);
@@ -48,13 +57,15 @@ public class CheckoutCompletedHandler implements StripeEventHandler {
         }
     }
 
+    @Transactional
     private void processSuccessfulPayment(JsonNode objectNode) {
         double amountTotal = objectNode.get("amount_total").asLong() / 100.0;
         String sessionId = objectNode.get("id").asText();
         String transactionReference = objectNode.get("metadata").get("transactionReference").asText();
         String paymentIntent = objectNode.get("payment_intent").asText();
 
-        Transaction transaction = transactionService.findByReferenceNumber(transactionReference);
+        Transaction transaction = transactionService.findByReferenceNumberWithFlaggedReasons(transactionReference);
+        
         if (transaction == null || transaction.getCurrentStatus().equals(TransactionStatus.SUCCESS.getValue())) {
             return;
         }

@@ -133,7 +133,7 @@ public class StripeService implements PaymentService {
 
             if (Stripe.apiKey == null) {
                 log.error("Stripe API key is null at payment creation time");
-                Stripe.apiKey = stripeApiKey; // Attempt to fix
+                Stripe.apiKey = stripeApiKey;
             } else {
                 log.info("Using Stripe API key starting with: {}...",
                         Stripe.apiKey.substring(0, Math.min(8, Stripe.apiKey.length())));

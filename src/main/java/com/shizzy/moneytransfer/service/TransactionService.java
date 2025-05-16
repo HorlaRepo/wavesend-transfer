@@ -11,6 +11,10 @@ import com.shizzy.moneytransfer.model.Wallet;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TransactionService {
      ApiResponse<PagedTransactionResponse> getAllTransactions(int page, int size);
@@ -25,7 +29,8 @@ public interface TransactionService {
 
      ApiResponse<PagedTransactionResponse> getUserTransactionsByDate(TransactionsByDateRequest request);
 
-     ApiResponse<PagedTransactionResponse> searchTransactions(String inputString, String sortOrder, String searchQuery, int page, int size);
+     ApiResponse<PagedTransactionResponse> searchTransactions(String inputString, String sortOrder, String searchQuery,
+               int page, int size);
 
      ApiResponse<TransactionResponse> updateTransactionStatus(String referenceNumber, UpdateTransactionRequest request);
 
@@ -33,13 +38,16 @@ public interface TransactionService {
 
      Transaction findByReferenceNumber(String referenceNumber);
 
+     Transaction findByReferenceNumberWithFlaggedReasons(String referenceNumber);
+
+
      Transaction findById(Integer id);
 
      void completeDeposit(Transaction transaction, String sessionId, String providerId,
-                          BigDecimal amount, RefundStatus refundStatus);
+               BigDecimal amount, RefundStatus refundStatus);
 
      Transaction createReversalTransaction(Wallet wallet, BigDecimal amount, String description,
-                                           TransactionOperation operation);
+               TransactionOperation operation);
 
      Transaction createRefundTransaction(Transaction originalTransaction, BigDecimal amount, String referenceNumber);
 
@@ -49,7 +57,10 @@ public interface TransactionService {
 
      ApiResponse<TransactionFee> getTransactionFee(double amount);
 
-     ApiResponse<PagedTransactionResponse> getTransactionsByFilter(Long walletId, String filter, String startDate, String endDate, int pageNumber, int pageSize);
+     ApiResponse<PagedTransactionResponse> getTransactionsByFilter(Long walletId, String filter, String startDate,
+               String endDate, int pageNumber, int pageSize);
 
-     Transaction createTransaction(Wallet wallet, CreateTransactionRequestBody requestBody, TransactionType transactionType, TransactionOperation operation, String description, String referenceNumber);
+     Transaction createTransaction(Wallet wallet, CreateTransactionRequestBody requestBody,
+               TransactionType transactionType, TransactionOperation operation, String description,
+               String referenceNumber);
 }
