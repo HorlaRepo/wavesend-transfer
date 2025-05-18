@@ -11,6 +11,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import com.shizzy.moneytransfer.service.AccountLimitAssignmentService;
+import com.shizzy.moneytransfer.service.KycVerificationService;
 
 
 @SpringBootApplication
@@ -25,7 +26,8 @@ public class Main {
 	}
 
 	@Bean
-	CommandLineRunner runner() {
+	CommandLineRunner runner(KycVerificationService kycVerificationService,
+			AccountLimitAssignmentService accountLimitAssignmentService) {
 
 		return args -> {
 			

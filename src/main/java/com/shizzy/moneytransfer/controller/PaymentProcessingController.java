@@ -36,24 +36,23 @@ public class PaymentProcessingController {
     }
 
     @PostMapping("/send")
-    ApiResponse<TransactionResponseDTO> sendMoney(@RequestBody CreateTransactionRequestBody requestBody){
+    ApiResponse<TransactionResponseDTO> sendMoney(@RequestBody CreateTransactionRequestBody requestBody) {
         return paymentProcessingService.sendMoney(requestBody);
     }
 
     @PostMapping("/deposit")
-    ResponseEntity<PaymentResponse> createStripePayment(@RequestBody CreatePaymentRequestBody requestBody) {
-        try {
-            PaymentResponse paymentResponse = paymentProcessingService.createStripePayment(requestBody.getAmount(), requestBody.getEmail());
-            return ResponseEntity.ok(paymentResponse);
-        } catch (StripeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    ResponseEntity<PaymentResponse> createStripePayment(@RequestBody CreatePaymentRequestBody requestBody)
+            throws Exception {
+
+        PaymentResponse paymentResponse = paymentProcessingService.createStripePayment(requestBody.getAmount(),
+                requestBody.getEmail());
+        return ResponseEntity.ok(paymentResponse);
+
     }
 
     @PostMapping("/stripe-webhook")
-    public ResponseEntity<String> handleStripeWebhook(@RequestHeader("Stripe-Signature") String sigHeader, @RequestBody String payload) {
+    public ResponseEntity<String> handleStripeWebhook(@RequestHeader("Stripe-Signature") String sigHeader,
+            @RequestBody String payload) {
         log.info(payload);
         try {
             Webhook.constructEvent(payload, sigHeader, webhookSecret);
@@ -68,7 +67,8 @@ public class PaymentProcessingController {
     }
 
     @PostMapping("/flutterwave-webhook")
-    public ResponseEntity<String> handleWebhook(@RequestBody WebhookPayload payload, @RequestHeader("verif-hash") String signature) {
+    public ResponseEntity<String> handleWebhook(@RequestBody WebhookPayload payload,
+            @RequestHeader("verif-hash") String signature) {
         if (!signature.equals(secretHash)) {
             return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
         }

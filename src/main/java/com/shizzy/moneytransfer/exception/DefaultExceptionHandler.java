@@ -32,25 +32,9 @@ import static org.springframework.http.HttpStatus.FORBIDDEN;
 @RestControllerAdvice
 public class DefaultExceptionHandler {
 
-        // @ExceptionHandler(ResourceNotFoundException.class)
-        // @ResponseBody
-        // public ResponseEntity<ApiError> handleException (ResourceNotFoundException e,
-        // HttpServletRequest request){
-        // final ApiError apiError = ApiError.builder()
-        // .message(e.getMessage())
-        // .statusCode(HttpStatus.NOT_FOUND.value())
-        // .localDateTime(LocalDateTime.now())
-        // .build();
-        //
-        // return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
-        // }
-
         @ExceptionHandler(ResourceNotFoundException.class)
         public ResponseEntity<ApiError> handleException(ResourceNotFoundException ex, HttpServletRequest request) {
-                // Log the Accept header for debugging
-                String acceptHeader = request.getHeader("Accept");
-                System.out.println("Client Accept Header: " + acceptHeader);
-
+                
                 ApiError error = ApiError.builder()
                                 .path(request.getRequestURI())
                                 .message(ex.getMessage())
@@ -317,7 +301,8 @@ public class DefaultExceptionHandler {
         }
 
         @ExceptionHandler(LimitExceededException.class)
-        public ResponseEntity<ApiError> handleLimitExceededException(LimitExceededException ex, HttpServletRequest request) {
+        public ResponseEntity<ApiError> handleLimitExceededException(LimitExceededException ex,
+                        HttpServletRequest request) {
                 ApiError errorResponse = ApiError.builder()
                                 .path(request.getRequestURI())
                                 .message(ex.getMessage())
@@ -328,10 +313,19 @@ public class DefaultExceptionHandler {
         }
 
         @ExceptionHandler(TransactionLimitExceededException.class)
-        public ResponseEntity<ApiError> handleLimitExceededException(TransactionLimitExceededException ex, HttpServletRequest request) {
+        public ResponseEntity<ApiError> handleLimitExceededException(TransactionLimitExceededException ex,
+                        HttpServletRequest request) {
+                // Extract just the actual message, not the full exception toString
+                String userMessage = ex.getMessage();
+
+                // If the message contains the class name, strip it out
+                if (userMessage.contains("TransactionLimitExceededException")) {
+                        userMessage = userMessage.substring(userMessage.indexOf(":") + 1).trim();
+                }
+
                 ApiError errorResponse = ApiError.builder()
                                 .path(request.getRequestURI())
-                                .message(ex.getMessage())
+                                .message(userMessage)
                                 .statusCode(HttpStatus.FORBIDDEN.value())
                                 .localDateTime(LocalDateTime.now())
                                 .build();

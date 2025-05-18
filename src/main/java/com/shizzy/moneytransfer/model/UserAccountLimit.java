@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.CreatedDate;
+
 @Entity
 @Table(name = "user_account_limits")
 @Data
@@ -27,6 +29,7 @@ public class UserAccountLimit {
     private VerificationLevel verificationLevel;
     
     @Column(nullable = false)
+    @CreatedDate
     private LocalDateTime createdAt = LocalDateTime.now();
     
     @Column(nullable = false)

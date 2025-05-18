@@ -15,7 +15,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,7 +123,8 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
             Pageable pageable) {
         Page<ScheduledTransfer> transfersPage = scheduledTransferRepository
                 .findByCreatedByOrderByScheduledDateTimeDesc(userId, pageable);
-                log.info("🔍 Scheduled transfers page - User ID: {}, Page number: {}, Page size: {}, Total elements: {}, Total pages: {}",
+        log.info(
+                "🔍 Scheduled transfers page - User ID: {}, Page number: {}, Page size: {}, Total elements: {}, Total pages: {}",
                 userId,
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
@@ -321,8 +321,13 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
                 .build();
     }
 
-    //this method is public so it can be called by the Kafka consumer
+    // this method is public so it can be called by the Kafka consumer
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, allEntries = true),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#currentTransfer.id"),
+            @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#currentTransfer.parentTransferId", condition = "#currentTransfer.parentTransferId != null")
+    })
     public void scheduleNextOccurrenceIfNeeded(ScheduledTransfer currentTransfer) {
         // Check if we should continue recurring
         if (shouldCreateNextOccurrence(currentTransfer)) {
@@ -516,6 +521,10 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, allEntries = true),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, allEntries = true)
+    })
     public ApiResponse<ScheduledTransferResponseDTO> verifyAndScheduleTransfer(
             ScheduledTransferVerificationRequest request, String userId) {
         // Verify user
@@ -584,6 +593,17 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
             log.warn("Error getting receiver name: {}", e.getMessage());
             return email.split("@")[0];
         }
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = CacheNames.USER_SCHEDULED_TRANSFERS, allEntries = true),
+            @CacheEvict(value = CacheNames.SINGLE_SCHEDULED_TRANSFER, key = "#transferId"),
+            @CacheEvict(value = CacheNames.RECURRING_SERIES, key = "#parentId", condition = "#parentId != null")
+    })
+    public void evictCachesAfterProcessing(Long transferId, Long parentId) {
+        log.info("Evicting caches after processing transfer ID: {}", transferId);
+        // Method intentionally empty - the annotations do the work
     }
 
 }

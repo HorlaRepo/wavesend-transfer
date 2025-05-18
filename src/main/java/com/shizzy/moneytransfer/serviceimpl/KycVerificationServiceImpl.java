@@ -21,6 +21,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import static com.shizzy.moneytransfer.enums.VerificationStatus.*;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -163,6 +165,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
         userLimit.setUserId(userId);
         userLimit.setVerificationLevel(level);
+        userLimit.setCreatedAt(LocalDateTime.now());
         userAccountLimitRepository.save(userLimit);
 
         log.info("Updated user {} verification level to {}", userId, level);

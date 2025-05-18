@@ -11,6 +11,7 @@ import com.shizzy.moneytransfer.enums.RefundStatus;
 import com.shizzy.moneytransfer.enums.TransactionOperation;
 import com.shizzy.moneytransfer.exception.PaymentException;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
+import com.shizzy.moneytransfer.exception.TransactionLimitExceededException;
 import com.shizzy.moneytransfer.model.RefundImpactRecord;
 import com.shizzy.moneytransfer.model.Transaction;
 import com.shizzy.moneytransfer.model.TransactionReference;
@@ -47,6 +48,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static com.shizzy.moneytransfer.enums.RefundStatus.*;
 import static com.shizzy.moneytransfer.enums.TransactionOperation.*;
@@ -75,6 +77,7 @@ public class StripeService implements PaymentService {
     private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final RefundImpactRecordRepository refundImpactRecordRepository;
+    private final TransactionLimitService transactionLimitService;
     private static final Logger LOGGER = LoggerFactory.getLogger(StripeService.class);
 
     @PostConstruct
@@ -129,6 +132,26 @@ public class StripeService implements PaymentService {
     @Transactional
     @CacheEvict(value = { TRANSACTIONS, SINGLE_TRANSACTION, ALL_USER_TRANSACTION }, allEntries = true)
     public PaymentResponse createPayment(double amount, String email) throws Exception {
+
+        String userId = keycloakService.existsUserByEmail(email).getData().getId();
+
+        // Calculate new balance after deposit
+        Wallet wallet = Optional.of(walletRepository.findWalletByCreatedBy(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"))).get();
+        BigDecimal newBalance = wallet.getBalance().add(BigDecimal.valueOf(amount));
+
+        try{
+            // Validate against deposit limits
+        transactionLimitService.validateDeposit(userId, BigDecimal.valueOf(amount));
+
+        // Validate against max balance limit
+        transactionLimitService.validateNewBalance(userId, newBalance);
+
+        } catch (TransactionLimitExceededException ex) {
+            throw ex;
+        }
+        
+
         try {
 
             if (Stripe.apiKey == null) {
@@ -142,9 +165,8 @@ public class StripeService implements PaymentService {
             String transactionReference = referenceService.generateUniqueReferenceNumber() + "-STRP";
 
             // Get user wallet
-            String userId = keycloakService.existsUserByEmail(email).getData().getId();
-            Wallet wallet = walletRepository.findWalletByCreatedBy(userId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
+            // Wallet wallet = walletRepository.findWalletByCreatedBy(userId)
+            //         .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
 
             // Create pending transaction
             Transaction transaction = Transaction.builder()

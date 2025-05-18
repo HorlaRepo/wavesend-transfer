@@ -33,7 +33,7 @@ public class ScheduledTransferPublisherService {
      * Scan for scheduled transfers that are due for execution and publish them to Kafka
      * Runs every minute to catch due transfers
      */
-    @Scheduled(fixedRate = 60000) // run every minute
+    @Scheduled(fixedRate = 60000)
     @Transactional(readOnly = true)
     public void publishDueTransfers() {
         LocalDateTime now = LocalDateTime.now();
@@ -54,7 +54,7 @@ public class ScheduledTransferPublisherService {
      * Scan for failed transfers that need to be retried
      * Runs every 15 minutes
      */
-    @Scheduled(fixedRate = 900000) // 15 minutes
+    @Scheduled(fixedRate = 900000) 
     @Transactional(readOnly = true)
     public void retryFailedTransfers() {
         LocalDateTime retryBefore = LocalDateTime.now().minusMinutes(15); // retry transfers that failed at least 15 minutes ago
