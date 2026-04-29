@@ -1,0 +1,250 @@
+server:
+  port: 8080
+  error:
+    include-message: never
+  servlet:
+    context-path: /api/v1/
+
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:https://app.wavesend.cc}
+  allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  allowed-headers: "Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers"
+  exposed-headers: "Authorization"
+
+spring:
+  application:
+    name: wavesend
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      auto-commit: false
+      maximum-pool-size: 8
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      initialization-fail-timeout: 0
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    repair-on-migrate: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    properties:
+      security.protocol: SASL_SSL
+      sasl.mechanism: PLAIN
+      sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="$ConnectionString" password="${EVENTHUB_CONNECTION_STRING}";
+      retry.backoff.ms: 1000
+      reconnect.backoff.ms: 1000
+      reconnect.backoff.max.ms: 5000
+
+    consumer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      group-id: wavesend-consumer-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.shizzy.moneytransfer.dto"
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+    producer:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: transactionNotification:com.shizzy.moneytransfer.dto.TransactionNotification
+
+    listener:
+      auth-exception-retry-interval: 10000
+
+  logging:
+    level:
+      org.apache.kafka: DEBUG
+      org.springframework.kafka: DEBUG
+      org.hibernate: DEBUG
+      org.postgresql: DEBUG
+      com.zaxxer.hikari: DEBUG
+      com.shizzy.moneytransfer: DEBUG
+    jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    default-property-inclusion: NON_NULL
+    modules:
+      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        connectiontimeout: 5000
+        timeout: 3000
+        writetimeout: 5000
+        smtp:
+          starttls:
+            enable: true
+          trust: "${MAIL_HOST}"
+          socketFactory:
+            port: 587
+            class: javax.net.ssl.SSLSocketFactory
+      auth: true
+    protocol: smtp
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+          order_inserts: true
+          order_updates: true
+        connection:
+          provider_disables_autocommit: true
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+        format_sql: false
+        id:
+          new_generator_mappings: true
+          optimizer.default_increment_size: 1
+          sequence.increment_size_mismatch_strategy: fix
+        generate_statistics: false
+    show-sql: false
+    open-in-view: false
+
+  main:
+    web-application-type: servlet
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  codec:
+    max-in-memory-size: 10MB
+
+  cache:
+    type: redis
+    redis:
+      cache-null-values: true
+      time-to-live: 6000
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: true
+      timeout: 600
+      enabled: true
+
+cache:
+  config:
+    entryTtl: 300
+    transactions:
+      entryTtl: 300
+    wallets:
+      entryTtl: 300
+    otp:
+      entryTtl: 60
+
+application:
+  mailing:
+    frontend:
+      activation-url: ${FRONTEND_URL}/activate-account
+      password-reset-url: ${FRONTEND_URL}/reset-password
+
+stripe:
+  api-key: ${STRIPE_API_KEY}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET}
+  success-url: ${FRONTEND_URL}/account/deposit-success
+  cancel-url: ${FRONTEND_URL}/account/deposit-failed
+
+springdoc:
+  default-produces-media-type: application/json
+  server-url: ${SPRINGDOC_SERVER_URL}
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+
+logging:
+  level:
+    root: WARN
+    com.shizzy.moneytransfer: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.springframework.web.cors: DEBUG
+
+flutterwave:
+  api:
+    key: ${FLUTTERWAVE_API_KEY}
+    live-key: ${FLUTTERWAVE_LIVE_KEY}
+    base-url: https://api.flutterwave.com/v3
+    secret-hash: ${FLUTTERWAVE_SECRET_HASH}
+
+paystack:
+  api:
+    key: ${PAYSTACK_API_KEY}
+    base-url: https://api.paystack.co
+
+twilio:
+  account:
+    sid: ${TWILIO_ACCOUNT_SID}
+  auth:
+    token: ${TWILIO_AUTH_TOKEN}
+  phone: ${TWILIO_PHONE}
+
+termii:
+  api:
+    base-url: https://v3.api.termii.com
+    api-key: ${TERMII_API_KEY}
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  access-token-expiration: 3600000
+  refresh-token-expiration: 604800000
+
+mailer-send:
+  api-token: ${MAILER_SEND_API_TOKEN}
+
+# Azure Blob Storage (replacing AWS S3)
+azure:
+  storage:
+    account-name: ${AZURE_STORAGE_ACCOUNT_NAME}
+    account-key: ${AZURE_STORAGE_ACCOUNT_KEY}
+    container-name: kyc-documents
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY}
+  api-url: https://openrouter.ai/api/v1/chat/completions
+  model: openai/gpt-oss-120b:free
+  max-tokens: 1000
+  temperature: 0.7
+
+app:
+  beneficiary:
+    low-balance-threshold: 1400.00
+    user-min-balance: 4000.00
+
+brevo:
+  api-key: ${BREVO_API_KEY}
+  deposit-template-id: 1
+  withdrawal-template-id: 2
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  model: gemini-2.5-flash-lite

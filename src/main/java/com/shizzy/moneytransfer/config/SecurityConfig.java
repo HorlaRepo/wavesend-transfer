@@ -65,6 +65,7 @@ public class SecurityConfig {
                                         "/health/**",
                                         "/beneficiaries/**",
                                         "/auth/**",  // Authentication endpoints (login, register, etc.)
+                                        "/users/check-user",  // User verification for transfers
                                         "/stripe/webhook",
                                         "/flutter/beneficiaries",
                                         "/payment/stripe-webhook",
