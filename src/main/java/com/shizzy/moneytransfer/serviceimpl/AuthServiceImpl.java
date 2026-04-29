@@ -159,7 +159,14 @@ public class AuthServiceImpl implements AuthService {
 
             // Check if account is enabled
             if (!user.isEnabled()) {
-                throw new DisabledException("Account not activated. Please check your email.");
+                // Resend activation code
+                try {
+                    sendVerificationEmail(user);
+                    log.info("Resent activation code to unactivated user: {}", user.getEmail());
+                } catch (MessagingException e) {
+                    log.error("Failed to resend activation code to: {}", user.getEmail(), e);
+                }
+                throw new DisabledException("Account not activated. A new activation code has been sent to your email.");
             }
 
             // Check if account is locked
@@ -207,7 +214,19 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("Invalid email or password");
         } catch (DisabledException e) {
             log.error("Account disabled for user: {}", authRequestDTO.getUsername());
-            throw new DisabledException("Account not activated. Please check your email.");
+            // Return special response for unactivated accounts
+            JwtResponseDTO response = JwtResponseDTO.builder()
+                    .accessToken(null)
+                    .username(authRequestDTO.getUsername())
+                    .twoFactorRequired(false)
+                    .activationRequired(true)
+                    .build();
+
+            return ApiResponse.<JwtResponseDTO>builder()
+                    .success(false)
+                    .message("Account not activated. A new activation code has been sent to your email.")
+                    .data(response)
+                    .build();
         } catch (LockedException e) {
             log.error("Account locked for user: {}", authRequestDTO.getUsername());
             throw new LockedException("Account is locked. Please contact support.");
@@ -448,6 +467,15 @@ public class AuthServiceImpl implements AuthService {
 
     // Helper methods
     private void sendVerificationEmail(User user) throws MessagingException {
+        // Invalidate any existing unvalidated activation tokens for this user
+        tokenRepository.findAllByUserIdAndTokenType(user.getUserId(), TokenType.EMAIL_VERIFICATION)
+                .stream()
+                .filter(t -> t.getValidatedAt() == null && !t.isExpired())
+                .forEach(t -> {
+                    t.setExpiresAt(LocalDateTime.now()); // Mark as expired
+                    tokenRepository.save(t);
+                });
+
         String tokenString = generateVerificationCode(6);
         Token token = Token.builder()
                 .token(tokenString)
