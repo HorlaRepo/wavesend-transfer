@@ -39,6 +39,10 @@ build/
 .env
 !.env.example
 
+### Azure Deployment Guides (contains secrets) ###
+AZURE_DEPLOYMENT_UI_GUIDE.md
+AZURE_DEPLOYMENT.md
+
 ### Keycloak files ###
 /keycloak/
 /META-INF/
