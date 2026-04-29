@@ -29,7 +29,7 @@ public class NotificationConsumer {
     private final UserNotificationPreferencesRepository userPreferencesRepository;
 
     @Autowired
-    @Qualifier("brevoEmailService")
+    @Qualifier("mailtrapEmailService")
     public void setEmailService(EmailService emailService) {
         this.emailService = emailService;
     }

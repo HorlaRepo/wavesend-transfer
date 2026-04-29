@@ -240,10 +240,10 @@ app:
     low-balance-threshold: 1400.00
     user-min-balance: 4000.00
 
-brevo:
-  api-key: ${BREVO_API_KEY}
-  deposit-template-id: 1
-  withdrawal-template-id: 2
+mailtrap:
+  api-token: ${MAILTRAP_TOKEN}
+  sender-email: wavesend@sandbox.nexhrm.com
+  sender-name: WaveSend
 
 gemini:
   api-key: ${GEMINI_API_KEY}

@@ -37,7 +37,7 @@ public class ScheduledTransferNotificationConsumer {
     private final ScheduledTransferService scheduledTransferService;
 
     @Autowired
-    @Qualifier("brevoEmailService")
+    @Qualifier("mailtrapEmailService")
     public void setEmailService(EmailService emailService) {
         this.emailService = emailService;
     }

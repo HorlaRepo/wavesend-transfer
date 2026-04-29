@@ -48,4 +48,4 @@ AZURE_DEPLOYMENT.md
 /META-INF/
 /provider/
 /themes/
-/temp/
+/temp/deploy-containerapp.sh

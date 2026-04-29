@@ -59,7 +59,7 @@ public class OtpService {
     private static final String PENDING_SCHEDULED_TRANSFERS_CACHE = "pendingScheduledTransfersCache";
 
     @Autowired
-    @Qualifier("brevoEmailService")
+    @Qualifier("mailtrapEmailService")
     public void setEmailService(EmailService emailService) {
         this.emailService = emailService;
     }

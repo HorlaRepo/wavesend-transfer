@@ -82,18 +82,26 @@ public class RedisConfig {
             logger.info("Configuring Redis for profile: {}", activeProfile);
             logger.info("Connecting to Redis at {}:{} with SSL: {}", redisHost, redisPort, sslEnabled);
 
-            // Build client configuration with INCREASED timeouts
-            LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                    .commandTimeout(Duration.ofSeconds(5))
-                    .shutdownTimeout(Duration.ofSeconds(5))
-                    .clientOptions(ClientOptions.builder()
-                            .socketOptions(SocketOptions.builder()
-                                    .connectTimeout(Duration.ofSeconds(5))
-                                    .build())
-                            .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
-                            .protocolVersion(ProtocolVersion.RESP2)
-                            .build())
-                    .build();
+            // Build client configuration with INCREASED timeouts and SSL support
+            LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder =
+                    LettuceClientConfiguration.builder()
+                            .commandTimeout(Duration.ofSeconds(5))
+                            .shutdownTimeout(Duration.ofSeconds(5))
+                            .clientOptions(ClientOptions.builder()
+                                    .socketOptions(SocketOptions.builder()
+                                            .connectTimeout(Duration.ofSeconds(5))
+                                            .build())
+                                    .timeoutOptions(TimeoutOptions.enabled(Duration.ofSeconds(5)))
+                                    .protocolVersion(ProtocolVersion.RESP2)
+                                    .build());
+
+            // Enable SSL if configured
+            if (sslEnabled) {
+                logger.info("SSL enabled for Redis connection");
+                clientConfigBuilder.useSsl();
+            }
+
+            LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
 
             // Use same Redis configuration
             RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();

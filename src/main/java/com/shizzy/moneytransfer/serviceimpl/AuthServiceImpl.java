@@ -51,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
     private EmailService emailService;
 
     @Autowired
-    @Qualifier("brevoEmailService")
+    @Qualifier("mailtrapEmailService")
     public void setEmailService(EmailService emailService) {
         this.emailService = emailService;
     }
