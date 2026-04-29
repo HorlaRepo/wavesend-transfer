@@ -11,13 +11,15 @@ import com.shizzy.moneytransfer.repository.BeneficiaryAiSuggestionRepository;
 import com.shizzy.moneytransfer.repository.UserBeneficiariesRepository;
 import com.shizzy.moneytransfer.repository.WalletRepository;
 import com.shizzy.moneytransfer.service.BeneficiaryAiSuggestionService;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import java.util.UUID;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -40,7 +42,7 @@ public class BeneficiaryAiSuggestionServiceImpl implements BeneficiaryAiSuggesti
     private final UserBeneficiariesRepository beneficiariesRepository;
     private final WalletRepository walletRepository;
     private final BeneficiaryAiSuggestionRepository suggestionRepository;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
 
     @Value("${app.beneficiary.low-balance-threshold}")
     private BigDecimal lowBalanceThreshold;
@@ -112,10 +114,14 @@ public class BeneficiaryAiSuggestionServiceImpl implements BeneficiaryAiSuggesti
         return CompletableFuture.runAsync(() -> {
             try {
                 // Check if beneficiary has wallet
-                UserRepresentation beneficiaryUser = keycloakService.existsUserByEmail(beneficiary.getEmail())
-                        .getData();
+                User beneficiaryUser = userRepository.findByEmail(beneficiary.getEmail())
+                        .orElse(null);
 
-                Optional<Wallet> beneficiaryWalletOpt = walletRepository.findWalletByCreatedBy(beneficiaryUser.getId());
+                if (beneficiaryUser == null) {
+                    return;
+                }
+
+                Optional<Wallet> beneficiaryWalletOpt = walletRepository.findWalletByCreatedBy(beneficiaryUser.getUserId().toString());
                 if (beneficiaryWalletOpt.isEmpty()) {
                     return;
                 }
@@ -150,8 +156,9 @@ public class BeneficiaryAiSuggestionServiceImpl implements BeneficiaryAiSuggesti
                         // Determine relationship (just use "friend" for now)
                         String relationship = "friend";
 
-                        String userFirstName = keycloakService.getUserById(userId).getData()
-                                .getFirstName();
+                        User user = userRepository.findByUserId(UUID.fromString(userId))
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+                        String userFirstName = user.getFirstName();
 
                         // Get the suggestion from AI
                         String suggestionText = openRouterAiClient.generateBeneficiarySuggestion(

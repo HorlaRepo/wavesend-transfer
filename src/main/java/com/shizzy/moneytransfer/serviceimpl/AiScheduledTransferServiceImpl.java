@@ -12,8 +12,11 @@ import com.shizzy.moneytransfer.repository.WalletRepository;
 import com.shizzy.moneytransfer.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.representations.idm.UserRepresentation;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
@@ -35,7 +38,7 @@ public class AiScheduledTransferServiceImpl {
     private final AiEntityExtractionService entityExtractionService;
     private final ConversationManagerService conversationManager;
     private final UserBeneficiariesRepository beneficiaryRepository;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final TransactionLimitService transactionLimitService;
     private final AccountLimitService accountLimitService;
     private final WalletRepository walletRepository;
@@ -118,15 +121,12 @@ public class AiScheduledTransferServiceImpl {
                                                             state.setStage(
                                                                     ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
-                                                            return Mono.just(keycloakService.getUserById(userId))
-                                                                    .map(userResponse -> {
-                                                                        UserRepresentation user = userResponse
-                                                                                .getData();
-                                                                        return formatConfirmationMessage(
-                                                                                details,
-                                                                                beneficiary.getName(),
-                                                                                user.getEmail());
-                                                                    });
+                                                            User user = userRepository.findByUserId(UUID.fromString(userId))
+                                                                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                                                            return Mono.just(formatConfirmationMessage(
+                                                                    details,
+                                                                    beneficiary.getName(),
+                                                                    user.getEmail()));
                                                         });
 
                                             } else {
@@ -186,8 +186,8 @@ public class AiScheduledTransferServiceImpl {
                         state.setStage(ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
                         // Get user details directly
-                        ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-                        UserRepresentation user = userResponse.getData();
+                        User user = userRepository.findByUserId(UUID.fromString(userId))
+                                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
                         ScheduledTransferDetails details = new ScheduledTransferDetails();
                         details.setAmount(state.getAmount());
@@ -222,8 +222,8 @@ public class AiScheduledTransferServiceImpl {
                             state.setStage(ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
                             // Get user details directly
-                            ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-                            UserRepresentation user = userResponse.getData();
+                            User user = userRepository.findByUserId(UUID.fromString(userId))
+                                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
                             ScheduledTransferDetails details = new ScheduledTransferDetails();
                             details.setAmount(state.getAmount());
@@ -281,13 +281,13 @@ public class AiScheduledTransferServiceImpl {
         }
 
         // Get user email
-        return Mono.just(keycloakService.getUserById(userId))
-                .flatMap(userResponse -> {
-                    UserRepresentation user = userResponse.getData();
-
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return Mono.fromCallable(() -> user)
+                .flatMap(userData -> {
                     // Create request
                     ScheduledTransferRequestDTO request = new ScheduledTransferRequestDTO(
-                            user.getEmail(),
+                            userData.getEmail(),
                             state.getSelectedBeneficiaryEmail(),
                             state.getAmount(),
                             state.getNote() != null ? state.getNote() : "Scheduled Transfer",
@@ -519,13 +519,13 @@ public class AiScheduledTransferServiceImpl {
         }
 
         // Get user email for the request
-        return Mono.just(keycloakService.getUserById(userId))
-                .flatMap(userResponse -> {
-                    UserRepresentation user = userResponse.getData();
-
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return Mono.fromCallable(() -> user)
+                .flatMap(userData -> {
                     // Recreate the original request
                     ScheduledTransferRequestDTO request = new ScheduledTransferRequestDTO(
-                            user.getEmail(),
+                            userData.getEmail(),
                             state.getSelectedBeneficiaryEmail(),
                             state.getAmount(),
                             state.getNote() != null ? state.getNote() : "Scheduled Transfer",
@@ -601,14 +601,14 @@ public class AiScheduledTransferServiceImpl {
     private Mono<ValidationResult> validateRecipientLimits(String recipientEmail, BigDecimal amount) {
         try {
             // Find recipient's userId from their email
-            ApiResponse<UserRepresentation> recipientResponse = keycloakService.existsUserByEmail(recipientEmail);
+            User recipient = userRepository.findByEmail(recipientEmail).orElse(null);
 
-            if (!recipientResponse.isSuccess() || recipientResponse.getData() == null) {
+            if (recipient == null) {
                 // Can't find recipient - will let the transfer service handle this
                 return Mono.just(new ValidationResult(true, ""));
             }
 
-            String recipientId = recipientResponse.getData().getId();
+            String recipientId = recipient.getUserId().toString();
 
             // Get recipient's wallet
             try {

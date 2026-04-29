@@ -1,10 +1,8 @@
 package com.shizzy.moneytransfer.enums;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 public enum EmailTemplateName {
 
     DEPOSIT("deposit_success"),
@@ -17,6 +15,9 @@ public enum EmailTemplateName {
     FAILED_TRANSFER("failed_transfer"),
     OTP_VERIFICATION("verification");
 
-
     private final String name;
+
+    EmailTemplateName(String name) {
+        this.name = name;
+    }
 }

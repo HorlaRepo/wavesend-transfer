@@ -7,7 +7,6 @@ import com.shizzy.moneytransfer.enums.EmailTemplateName;
 import com.shizzy.moneytransfer.model.Transaction;
 import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.service.EmailService;
-import com.shizzy.moneytransfer.service.KeycloakService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +33,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class BrevoEmailService implements EmailService {
 
-    private final KeycloakService keycloakService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
@@ -56,25 +54,54 @@ public class BrevoEmailService implements EmailService {
     }
 
     /**
-     * Replaces all placeholders in the template with values from the properties map
+     * Replaces all placeholders in the template with values from the properties map.
+     * Also handles {{#if key}}...{{/if}} conditional blocks.
      * @param template the HTML template string
      * @param properties a map of key-value pairs to replace in the template
      * @return the processed HTML string
      */
     private String processTemplate(String template, Map<String, Object> properties) {
+        // First pass: handle {{#if key}}...{{/if}} conditional blocks
+        template = processConditionalBlocks(template, properties);
+
+        // Second pass: replace simple {{key}} placeholders
         Matcher matcher = TEMPLATE_PATTERN.matcher(template);
         StringBuffer sb = new StringBuffer();
-        
+
         while (matcher.find()) {
             String key = matcher.group(1);
             Object value = properties.get(key);
             String replacement = (value != null) ? value.toString() : "";
-            // Handle conditional logic for status badges
-            if (key.equals("status") && properties.containsKey("status")) {
-                // The template handles this with conditional logic
-                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
+     * Processes {{#if key}}...{{/if}} conditional blocks.
+     * If the key exists and is truthy in properties, keeps the content.
+     * Otherwise removes the entire block.
+     */
+    private String processConditionalBlocks(String template, Map<String, Object> properties) {
+        Pattern ifPattern = Pattern.compile("\\{\\{#if\\s+(\\w+)\\}\\}(.*?)\\{\\{/if\\}\\}", Pattern.DOTALL);
+        Matcher matcher = ifPattern.matcher(template);
+        StringBuffer sb = new StringBuffer();
+
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            String content = matcher.group(2);
+            Object value = properties.get(key);
+
+            boolean isTruthy = value != null
+                    && !value.toString().isEmpty()
+                    && !value.toString().equals("false")
+                    && !value.toString().equals("0");
+
+            if (isTruthy) {
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(content));
             } else {
-                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+                matcher.appendReplacement(sb, "");
             }
         }
         matcher.appendTail(sb);

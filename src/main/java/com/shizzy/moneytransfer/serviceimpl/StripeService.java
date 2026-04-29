@@ -21,25 +21,24 @@ import com.shizzy.moneytransfer.repository.TransactionReferenceRepository;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
 import com.shizzy.moneytransfer.repository.WalletRepository;
 import com.shizzy.moneytransfer.service.*;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.payment.StripePaymentProcessor;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Event;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
-import com.stripe.net.ApiResource;
-import com.stripe.param.RefundCreateParams;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,7 +72,7 @@ public class StripeService implements PaymentService {
     private final TransactionRepository transactionRepository;
     private final TransactionReferenceRepository referenceRepository;
     private final TransactionReferenceService referenceService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final RefundImpactRecordRepository refundImpactRecordRepository;
@@ -133,7 +132,9 @@ public class StripeService implements PaymentService {
     @CacheEvict(value = { TRANSACTIONS, SINGLE_TRANSACTION, ALL_USER_TRANSACTION }, allEntries = true)
     public PaymentResponse createPayment(double amount, String email) throws Exception {
 
-        String userId = keycloakService.existsUserByEmail(email).getData().getId();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        String userId = user.getUserId().toString();
 
         // Calculate new balance after deposit
         Wallet wallet = Optional.of(walletRepository.findWalletByCreatedBy(userId)

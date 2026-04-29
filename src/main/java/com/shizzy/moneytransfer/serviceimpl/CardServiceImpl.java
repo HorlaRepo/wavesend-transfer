@@ -10,15 +10,13 @@ import com.shizzy.moneytransfer.exception.IllegalArgumentException;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.model.Card;
 import com.shizzy.moneytransfer.repository.CardRepository;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.serviceimpl.factory.CardGeneratorFactory;
 import com.shizzy.moneytransfer.serviceimpl.strategy.CardNumberGenerator;
 import com.shizzy.moneytransfer.util.CardValidationUtils;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.keycloak.KeycloakPrincipal;
-import org.keycloak.KeycloakSecurityContext;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,7 @@ public class CardServiceImpl implements CardService {
     private final CardRepository cardRepository;
     private final PasswordEncoder passwordEncoder;
     private final WalletRepository walletRepository;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final CardGeneratorFactory cardGeneratorFactory;
     private final CardPinService cardPinService;
 
@@ -48,7 +46,8 @@ public class CardServiceImpl implements CardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found with id " + cardRequest.getWalletId()));
 
         // Get user details
-        var userData = keycloakService.existsUserByEmail(cardRequest.getUserEmail()).getData();
+        User userData = userRepository.findByEmail(cardRequest.getUserEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         String userFirstName = userData.getFirstName();
         String userLastName = userData.getLastName();
 

@@ -56,10 +56,7 @@ spring:
       exclude: /db/migration/**
 
   security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI}
+    # Removed OAuth2 Resource Server - now using simple JWT authentication
 
   kafka:
     consumer:
@@ -203,15 +200,21 @@ termii:
     base-url: https://v3.api.termii.com
     api-key: ${TERMII_API_KEY}
 
-keycloak:
-  event-listener:
-    endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
-    endpoint-url: https://d6c6-2c0f-2a80-1c-8a10-cd8-ec6f-caa2-a883.ngrok-free.app
-  client:
-    id: ${KEYCLOAK_CLIENT_ID}
-    secret: ${KEYCLOAK_CLIENT_SECRET}
-    realm: ${KEYCLOAK_REALM}
-  server-url: ${KEYCLOAK_SERVER_URL}
+# Keycloak configuration removed - now using simple JWT authentication
+# keycloak:
+#   event-listener:
+#     endpoint-secret: ${KEYCLOAK_ENDPOINT_SECRET}
+#     endpoint-url: https://d6c6-2c0f-2a80-1c-8a10-cd8-ec6f-caa2-a883.ngrok-free.app
+#   client:
+#     id: ${KEYCLOAK_CLIENT_ID}
+#     secret: ${KEYCLOAK_CLIENT_SECRET}
+#     realm: ${KEYCLOAK_REALM}
+#   server-url: ${KEYCLOAK_SERVER_URL}
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  access-token-expiration: 3600000  # 1 hour in milliseconds
+  refresh-token-expiration: 604800000  # 7 days in milliseconds
 
 mailer-send:
   api-token: ${MAILER_SEND_API_TOKEN}
@@ -228,7 +231,7 @@ aws:
 openrouter:
   api-key: ${OPENROUTER_API_KEY}
   api-url: https://openrouter.ai/api/v1/chat/completions
-  model: meta-llama/llama-4-maverick:free
+  model: openai/gpt-oss-120b:free
   max-tokens: 1000
   temperature: 0.7
 
@@ -244,4 +247,4 @@ brevo:
 
 gemini:
   api-key: ${GEMINI_API_KEY}
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite

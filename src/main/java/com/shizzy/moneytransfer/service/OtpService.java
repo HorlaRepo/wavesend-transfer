@@ -7,14 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
@@ -28,6 +24,10 @@ import com.shizzy.moneytransfer.enums.EmailTemplateName;
 import com.shizzy.moneytransfer.enums.RecurrenceType;
 import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.exception.UnauthorizedAccessException;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
+
+import java.util.UUID;
 
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 public class OtpService {
     private EmailService emailService;
     private final CacheManager cacheManager;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     
     // In-memory cache for OTPs - this will work better than trying to use Spring's cache
     // for clean-up operations
@@ -150,11 +150,8 @@ public class OtpService {
      */
     public ApiResponse<Void> resendOtp(OtpResendRequest request, String userId) {
         // Verify user
-        ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-        if (!userResponse.isSuccess() || userResponse.getData() == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        var user = userResponse.getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Process based on operation type
         String operationType = request.getOperationType().toUpperCase();
@@ -192,7 +189,7 @@ public class OtpService {
     /**
      * Resend OTP for money transfer operation
      */
-    private void resendTransferOtp(String transferToken, UserRepresentation user) {
+    private void resendTransferOtp(String transferToken, User user) {
         // Retrieve pending transfer
         Cache pendingTransfersCache = getCacheOrThrow(PENDING_TRANSFERS_CACHE);
         Cache.ValueWrapper wrapper = pendingTransfersCache.get(transferToken);
@@ -228,7 +225,7 @@ public class OtpService {
     /**
      * Resend OTP for withdrawal operation
      */
-    private void resendWithdrawalOtp(String withdrawalToken, UserRepresentation user) {
+    private void resendWithdrawalOtp(String withdrawalToken, User user) {
         // Retrieve pending withdrawal
         Cache pendingWithdrawalsCache = getCacheOrThrow(PENDING_WITHDRAWALS_CACHE);
         Cache.ValueWrapper wrapper = pendingWithdrawalsCache.get(withdrawalToken);
@@ -257,7 +254,7 @@ public class OtpService {
     /**
      * Resend OTP for scheduled transfer operation
      */
-    private void resendScheduledTransferOtp(String scheduledTransferToken, UserRepresentation user, String userId) {
+    private void resendScheduledTransferOtp(String scheduledTransferToken, User user, String userId) {
         // Retrieve pending scheduled transfer
         Cache pendingTransfersCache = getCacheOrThrow(PENDING_SCHEDULED_TRANSFERS_CACHE);
         Cache.ValueWrapper wrapper = pendingTransfersCache.get(scheduledTransferToken);
@@ -359,12 +356,9 @@ public class OtpService {
      */
     private String getReceiverName(String email) {
         try {
-            UserRepresentation user = keycloakService.getUserByEmail(email);
-            if (user != null) {
-                return user.getFirstName() + " " + user.getLastName();
-            } else {
-                return email.split("@")[0]; 
-            }
+            return userRepository.findByEmail(email)
+                    .map(User::getFullName)
+                    .orElse(email.split("@")[0]);
         } catch (Exception e) {
             log.warn("Error getting receiver name: {}", e.getMessage());
             return email.split("@")[0];

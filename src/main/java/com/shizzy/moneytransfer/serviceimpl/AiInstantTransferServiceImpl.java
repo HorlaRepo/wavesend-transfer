@@ -12,8 +12,11 @@ import com.shizzy.moneytransfer.repository.WalletRepository;
 import com.shizzy.moneytransfer.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.representations.idm.UserRepresentation;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
@@ -34,7 +37,7 @@ public class AiInstantTransferServiceImpl {
 
     private final UserBeneficiariesRepository beneficiaryRepository;
     private final AiEntityExtractionService aiEntityExtractionService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final MoneyTransferService moneyTransferService;
     private final AccountLimitService accountLimitService;
     private final TransactionLimitService transactionLimitService;
@@ -101,10 +104,10 @@ public class AiInstantTransferServiceImpl {
                                 }
 
                                 // Check for insufficient balance here
-                                return Mono.just(keycloakService.getUserById(userId))
-                                        .flatMap(userResponse -> {
-                                            UserRepresentation user = userResponse.getData();
-
+                                User user = userRepository.findByUserId(UUID.fromString(userId))
+                                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                                return Mono.just(user)
+                                        .flatMap(userData -> {
                                             // Fetch user's wallet balance
                                             try {
                                                 BigDecimal balance = getUserBalance(userId);
@@ -146,7 +149,7 @@ public class AiInstantTransferServiceImpl {
                                                             return Mono.just(formatConfirmationMessage(
                                                                     details,
                                                                     beneficiary.getName(),
-                                                                    user.getEmail()));
+                                                                    userData.getEmail()));
                                                         } else {
                                                             // Multiple matches - ask user to select
                                                             state.setStage(
@@ -202,18 +205,15 @@ public class AiInstantTransferServiceImpl {
                     state.setSelectedBeneficiaryEmail(recipientEmail);
                     state.setStage(ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
-                    return Mono.just(keycloakService.getUserById(userId))
-                            .map(userResponse -> {
-                                UserRepresentation user = userResponse.getData();
-
-                                return formatConfirmationMessage(
-                                        new TransferDetails(
-                                                state.getAmount(),
-                                                recipientEmail,
-                                                state.getNote()),
-                                        recipientEmail, // Use email as name
-                                        user.getEmail());
-                            });
+                    User user = userRepository.findByUserId(UUID.fromString(userId))
+                            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                    return Mono.just(formatConfirmationMessage(
+                            new TransferDetails(
+                                    state.getAmount(),
+                                    recipientEmail,
+                                    state.getNote()),
+                            recipientEmail, // Use email as name
+                            user.getEmail()));
                 });
     }
 
@@ -265,18 +265,15 @@ public class AiInstantTransferServiceImpl {
                 state.setSelectedBeneficiaryEmail(selected.getEmail());
                 state.setStage(ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
-                return Mono.just(keycloakService.getUserById(userId))
-                        .map(userResponse -> {
-                            UserRepresentation user = userResponse.getData();
-
-                            return formatConfirmationMessage(
-                                    new TransferDetails(
-                                            state.getAmount(),
-                                            selected.getName(),
-                                            state.getNote()),
-                                    selected.getName(),
-                                    user.getEmail());
-                        });
+                User user = userRepository.findByUserId(UUID.fromString(userId))
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                return Mono.just(formatConfirmationMessage(
+                        new TransferDetails(
+                                state.getAmount(),
+                                selected.getName(),
+                                state.getNote()),
+                        selected.getName(),
+                        user.getEmail()));
             } else {
                 return Mono.just(
                         "Please enter a valid number from the list, provide an email address, or type 'cancel' to start over.");
@@ -295,18 +292,15 @@ public class AiInstantTransferServiceImpl {
                 state.setSelectedBeneficiaryEmail(selected.getEmail());
                 state.setStage(ConversationState.TransactionStage.CONFIRMING_TRANSACTION);
 
-                return Mono.just(keycloakService.getUserById(userId))
-                        .map(userResponse -> {
-                            UserRepresentation user = userResponse.getData();
-
-                            return formatConfirmationMessage(
-                                    new TransferDetails(
-                                            state.getAmount(),
-                                            selected.getName(),
-                                            state.getNote()),
-                                    selected.getName(),
-                                    user.getEmail());
-                        });
+                User user = userRepository.findByUserId(UUID.fromString(userId))
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                return Mono.just(formatConfirmationMessage(
+                        new TransferDetails(
+                                state.getAmount(),
+                                selected.getName(),
+                                state.getNote()),
+                        selected.getName(),
+                        user.getEmail()));
             } else {
                 return Mono
                         .just("I'm not sure which person you meant. Please enter just the number next to their name, "
@@ -443,13 +437,13 @@ public class AiInstantTransferServiceImpl {
         }
 
         // Get user email for the request
-        return Mono.just(keycloakService.getUserById(userId))
-                .flatMap(userResponse -> {
-                    UserRepresentation user = userResponse.getData();
-
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return Mono.fromCallable(() -> user)
+                .flatMap(userData -> {
                     // Recreate the original request
                     CreateTransactionRequestBody request = new CreateTransactionRequestBody(
-                            user.getEmail(),
+                            userData.getEmail(),
                             state.getSelectedBeneficiaryEmail(),
                             state.getAmount(),
                             state.getNote() != null ? state.getNote() : "Instant Transfer");
@@ -469,16 +463,16 @@ public class AiInstantTransferServiceImpl {
                                     "I've sent a new verification code to your email. " +
                                             "Please enter it here when you receive it:");
                         } else {
-                            return Mono.just(
-                                    "Sorry, I couldn't send a new verification code: " + response.getMessage() +
-                                            "\nPlease try entering your existing code again.");
-                        }
-                    } catch (Exception e) {
-                        log.error("Error resending OTP", e);
-                        return Mono.just("Sorry, there was an error sending a new verification code. " +
-                                "Please try entering your existing code again.");
+                        return Mono.just(
+                                "Sorry, I couldn't send a new verification code: " + response.getMessage() +
+                                        "\nPlease try entering your existing code again.");
                     }
-                });
+                } catch (Exception e) {
+                    log.error("Error resending OTP", e);
+                    return Mono.just("Sorry, there was an error sending a new verification code. " +
+                            "Please try entering your existing code again.");
+                }
+        });
     }
 
     /**
@@ -490,10 +484,10 @@ public class AiInstantTransferServiceImpl {
      */
     private Mono<String> initiateTransfer(String userId, ConversationState state) {
         // Get user email
-        return Mono.just(keycloakService.getUserById(userId))
-                .flatMap(userResponse -> {
-                    UserRepresentation user = userResponse.getData();
-
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return Mono.fromCallable(() -> user)
+                .flatMap(userData -> {
                     // Final validation of transaction limits
                     try {
                         // Validate transfer limit
@@ -518,7 +512,7 @@ public class AiInstantTransferServiceImpl {
 
                     // Create request
                     CreateTransactionRequestBody request = new CreateTransactionRequestBody(
-                            user.getEmail(),
+                            userData.getEmail(),
                             state.getSelectedBeneficiaryEmail(),
                             state.getAmount(),
                             state.getNote() != null ? state.getNote() : "Instant Transfer");
@@ -710,14 +704,14 @@ public class AiInstantTransferServiceImpl {
     private Mono<ValidationResult> validateRecipientLimits(String recipientEmail, BigDecimal amount) {
         try {
             // Find recipient's userId from their email
-            ApiResponse<UserRepresentation> recipientResponse = keycloakService.existsUserByEmail(recipientEmail);
+            User recipient = userRepository.findByEmail(recipientEmail).orElse(null);
 
-            if (!recipientResponse.isSuccess() || recipientResponse.getData() == null) {
+            if (recipient == null) {
                 // Can't find recipient - will let the transfer service handle this
                 return Mono.just(new ValidationResult(true, ""));
             }
 
-            String recipientId = recipientResponse.getData().getId();
+            String recipientId = recipient.getUserId().toString();
 
             // Get recipient's wallet
             try {

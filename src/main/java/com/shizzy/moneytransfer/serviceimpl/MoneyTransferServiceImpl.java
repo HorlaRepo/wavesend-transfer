@@ -16,7 +16,8 @@ import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.repository.RefundImpactRecordRepository;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
 import com.shizzy.moneytransfer.service.AccountLimitService;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.TransactionReferenceService;
 import com.shizzy.moneytransfer.service.TransactionService;
 import com.shizzy.moneytransfer.service.WalletService;
@@ -26,8 +27,8 @@ import com.shizzy.moneytransfer.service.TransactionLimitService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.cache.CacheManager;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +50,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
     private final TransactionReferenceService referenceService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final NotificationProducer notificationProducer;
     private final TransactionService transactionService;
     private final OtpService otpService;
@@ -220,12 +221,14 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     }
 
     private TransferInfo fetchSenderAndReceiverId(String senderEmail, String receiverEmail) {
-        UserRepresentation sender = keycloakService.existsUserByEmail(senderEmail).getData();
-        UserRepresentation receiver = keycloakService.existsUserByEmail(receiverEmail).getData();
+        User sender = userRepository.findByEmail(senderEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User receiver = userRepository.findByEmail(receiverEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return TransferInfo.builder()
-                .senderId(sender.getId())
-                .receiverId(receiver.getId())
+                .senderId(sender.getUserId().toString())
+                .receiverId(receiver.getUserId().toString())
                 .senderName(sender.getFirstName() + " " + sender.getLastName())
                 .receiverName(receiver.getFirstName() + " " + receiver.getLastName())
                 .senderEmail(sender.getEmail())
@@ -306,10 +309,8 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         validateSenderReceiver(requestBody.senderEmail(), requestBody.receiverEmail());
 
         // Verify it's the user's own email
-        UserRepresentation user = keycloakService.getUserById(userId).getData();
-        if (user == null) {
-            throw new IllegalArgumentException("User not found");
-        }
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         if (!user.getEmail().equals(requestBody.senderEmail())) {
             throw new IllegalArgumentException("You can only transfer from your own account");
@@ -384,11 +385,8 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     @Override
     public ApiResponse<TransactionResponseDTO> verifyAndTransfer(TransferVerificationRequest request, String userId) {
         // Verify user
-        ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-        UserRepresentation user = userResponse.getData();
-        if (user == null) {
-            throw new IllegalArgumentException("User not found");
-        }
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         log.info("Verifying transfer request with token: {}", request.getTransferToken());
 

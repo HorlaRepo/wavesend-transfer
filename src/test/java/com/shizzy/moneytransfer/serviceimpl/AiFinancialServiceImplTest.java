@@ -2,8 +2,11 @@ package com.shizzy.moneytransfer.serviceimpl;
 
 import com.shizzy.moneytransfer.dto.ConversationState;
 import com.shizzy.moneytransfer.dto.TransactionIntent;
+import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
+import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.service.AiIntentDetectionService;
 import com.shizzy.moneytransfer.service.ConversationManagerService;
+import com.shizzy.moneytransfer.service.WalletService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +18,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import java.util.ArrayList;
 import java.util.Random;
+import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,6 +38,9 @@ class AiFinancialServiceImplTest {
 
     @Mock
     private AiInstantTransferServiceImpl instantTransferService;
+
+    @Mock
+    private WalletService walletService;
 
     @Spy
     private Random random = new Random(123); // Seeded for deterministic tests
@@ -119,6 +126,55 @@ class AiFinancialServiceImplTest {
                 .verifyComplete();
 
         verify(scheduledTransferService).handleScheduledTransferRequest(USER_ID, TEST_MESSAGE, state);
+    }
+
+    @Test
+    void processUserMessage_withCheckBalanceIntent_shouldReturnWalletBalance() {
+        // Arrange
+        state.setStage(ConversationState.TransactionStage.NONE);
+
+        when(intentDetectionService.detectTransactionIntent(USER_ID, TEST_MESSAGE))
+                .thenReturn(Mono.just(TransactionIntent.CHECK_BALANCE));
+
+        when(walletService.findWalletOrThrow(USER_ID)).thenReturn(Wallet.builder()
+                .balance(new BigDecimal("1532.50"))
+                .currency("USD")
+                .build());
+
+        // Act & Assert
+        StepVerifier.create(financialService.processUserMessage(USER_ID, TEST_MESSAGE))
+                .assertNext(response -> {
+                    assertTrue(response.isSuccess());
+                    assertEquals("AI response generated", response.getMessage());
+                    assertEquals("Your current wallet balance is $1,532.50.", response.getData());
+                })
+                .verifyComplete();
+
+        verify(walletService).findWalletOrThrow(USER_ID);
+        verify(conversationManager, never()).generateContextualResponse(anyString(), anyString());
+    }
+
+    @Test
+    void processUserMessage_withCheckBalanceIntentAndMissingWallet_shouldReturnHelpfulMessage() {
+        // Arrange
+        state.setStage(ConversationState.TransactionStage.NONE);
+
+        when(intentDetectionService.detectTransactionIntent(USER_ID, TEST_MESSAGE))
+                .thenReturn(Mono.just(TransactionIntent.CHECK_BALANCE));
+
+        when(walletService.findWalletOrThrow(USER_ID))
+                .thenThrow(new ResourceNotFoundException("Wallet not found"));
+
+        // Act & Assert
+        StepVerifier.create(financialService.processUserMessage(USER_ID, TEST_MESSAGE))
+                .assertNext(response -> {
+                    assertTrue(response.isSuccess());
+                    assertEquals("AI response generated", response.getMessage());
+                    assertTrue(response.getData().contains("couldn't find a wallet"));
+                })
+                .verifyComplete();
+
+        verify(walletService).findWalletOrThrow(USER_ID);
     }
 
     @Test

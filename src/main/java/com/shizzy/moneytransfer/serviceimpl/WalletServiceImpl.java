@@ -136,6 +136,18 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
+    public ApiResponse<Wallet> getWalletByUserId(String userId) {
+        Wallet wallet = walletRepository.findWalletByCreatedBy(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
+
+        return ApiResponse.<Wallet>builder()
+                .success(true)
+                .message("Wallet retrieved successfully")
+                .data(wallet)
+                .build();
+    }
+
+    @Override
     public Wallet updateWallet(Wallet wallet) {
         return null;
     }

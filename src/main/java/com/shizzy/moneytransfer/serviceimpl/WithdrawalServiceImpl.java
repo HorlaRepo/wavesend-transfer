@@ -15,7 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import com.shizzy.moneytransfer.service.AccountLimitService;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.OtpService;
 import com.shizzy.moneytransfer.service.TransactionLimitService;
 import com.shizzy.moneytransfer.service.WithdrawalService;
@@ -38,7 +39,7 @@ public class WithdrawalServiceImpl implements WithdrawalService {
     private PaymentGatewayStrategy flutterwaveStrategy;
     // private final PaymentGatewayStrategy stripeStrategy;
     private final OtpService otpService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final CacheManager cacheManager;
     private final TransactionLimitService transactionLimitService;
     private final AccountLimitService accountLimitService;
@@ -99,11 +100,8 @@ public class WithdrawalServiceImpl implements WithdrawalService {
     public GenericResponse<WithdrawalInitiationResponse> initiateWithdrawal(WithdrawalRequestMapper request,
             String userId) {
         // Validate user and request
-        var apiResponse = keycloakService.getUserById(userId);
-        if (!apiResponse.isSuccess() || apiResponse.getData() == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        var user = apiResponse.getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Pre-validate the withdrawal against account limits
         try {
@@ -157,11 +155,8 @@ public class WithdrawalServiceImpl implements WithdrawalService {
     @Override
     public GenericResponse<WithdrawalData> verifyAndWithdraw(WithdrawalVerificationRequest request, String userId) {
         // Verify user exists
-        var apiResponse = keycloakService.getUserById(userId);
-        if (!apiResponse.isSuccess() || apiResponse.getData() == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        var user = apiResponse.getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Verify OTP
         Map<String, Object> operationDetails = otpService.verifyOtp(

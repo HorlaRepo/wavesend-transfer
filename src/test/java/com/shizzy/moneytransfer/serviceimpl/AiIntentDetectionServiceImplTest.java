@@ -14,6 +14,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -66,6 +67,17 @@ class AiIntentDetectionServiceImplTest {
         StepVerifier.create(aiIntentDetectionService.detectTransactionIntent(USER_ID, TEST_MESSAGE))
                 .expectNext(TransactionIntent.CHECK_BALANCE)
                 .verifyComplete();
+    }
+
+    @Test
+    void detectTransactionIntent_shouldReturnCheckBalanceFromKeywordsWithoutCallingAi() {
+        String userMessage = "What's my wallet balance?";
+
+        StepVerifier.create(aiIntentDetectionService.detectTransactionIntent(USER_ID, userMessage))
+                .expectNext(TransactionIntent.CHECK_BALANCE)
+                .verifyComplete();
+
+        verify(geminiAiClient, never()).generateResponse(anyString(), anyString());
     }
 
     @Test

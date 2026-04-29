@@ -2,10 +2,11 @@ package com.shizzy.moneytransfer.controller;
 
 
 import com.shizzy.moneytransfer.api.ApiResponse;
+import com.shizzy.moneytransfer.model.User;
 import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.service.WalletService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,8 +17,8 @@ public class WalletController {
     private final WalletService walletService;
 
     @GetMapping
-    public ApiResponse<Wallet> getWalletByUser(Authentication connectedUser) {
-        return  walletService.getWalletByCreatedBy(connectedUser);
+    public ApiResponse<Wallet> getWalletByUser(@AuthenticationPrincipal User user) {
+        return  walletService.getWalletByUserId(user.getUserId().toString());
     }
 
     @PostMapping

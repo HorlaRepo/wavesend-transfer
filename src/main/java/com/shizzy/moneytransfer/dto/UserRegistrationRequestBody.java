@@ -32,7 +32,6 @@ public class UserRegistrationRequestBody{
     @NotBlank(message = "Phone number cannot be blank.")
     private String phoneNumber;
 
-    @NotBlank(message = "Gender cannot be blank.")
     private Gender gender;
 
     @Valid

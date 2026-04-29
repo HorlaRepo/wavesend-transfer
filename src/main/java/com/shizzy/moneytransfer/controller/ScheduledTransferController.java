@@ -25,7 +25,8 @@ import com.shizzy.moneytransfer.dto.ScheduledTransferInitiationResponse;
 import com.shizzy.moneytransfer.dto.ScheduledTransferRequestDTO;
 import com.shizzy.moneytransfer.dto.ScheduledTransferResponseDTO;
 import com.shizzy.moneytransfer.dto.ScheduledTransferVerificationRequest;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.ScheduledTransferService;
 
 import jakarta.validation.Valid;
@@ -39,7 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ScheduledTransferController {
 
     private final ScheduledTransferService scheduledTransferService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
 
     @PostMapping("/initiate")
     public ResponseEntity<ApiResponse<ScheduledTransferInitiationResponse>> initiateScheduleTransfer(
@@ -91,7 +92,7 @@ public class ScheduledTransferController {
         log.debug("Getting all scheduled transfers for user: {}", principal.getName());
         
         // Get user email to use as cache key
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
+        String userEmail = principal.getName();
         
         return ResponseEntity.ok(scheduledTransferService.getUserScheduledTransfers(userEmail));
     }
@@ -129,7 +130,7 @@ public class ScheduledTransferController {
 
         log.debug("Updating scheduled transfer {} for user: {}", id, principal.getName());
         
-        String userEmail = keycloakService.getUserById(principal.getName()).getData().getEmail();
+        String userEmail = principal.getName();
         
         // Override sender email with authenticated user
         ScheduledTransferRequestDTO validatedRequest = new ScheduledTransferRequestDTO(

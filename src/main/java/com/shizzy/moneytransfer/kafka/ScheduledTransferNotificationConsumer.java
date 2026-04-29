@@ -17,7 +17,8 @@ import com.shizzy.moneytransfer.dto.ScheduledTransferEmailDto;
 import com.shizzy.moneytransfer.dto.ScheduledTransferNotification;
 import com.shizzy.moneytransfer.enums.EmailTemplateName;
 import com.shizzy.moneytransfer.service.EmailService;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.ScheduledTransferService;
 
 import jakarta.mail.MessagingException;
@@ -32,7 +33,7 @@ public class ScheduledTransferNotificationConsumer {
     private static final String TOPIC_NOTIFICATIONS = "scheduled-transfer-notifications";
 
     private EmailService emailService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final ScheduledTransferService scheduledTransferService;
 
     @Autowired
@@ -117,13 +118,12 @@ public class ScheduledTransferNotificationConsumer {
 
     private String getUserName(String email) {
         try {
-            // Try to get user from Keycloak
-            return Optional.ofNullable(keycloakService.getUserByEmail(email))
-                    .map(user -> user.getFirstName() + " " + user.getLastName())
-                    .orElse(email.split("@")[0]); // Fallback to email username
+            return userRepository.findByEmail(email)
+                    .map(User::getFullName)
+                    .orElse(email.split("@")[0]);
         } catch (Exception e) {
             log.warn("Failed to get user name for {}: {}", email, e.getMessage());
-            return email.split("@")[0]; // Fallback to email username
+            return email.split("@")[0];
         }
     }
 

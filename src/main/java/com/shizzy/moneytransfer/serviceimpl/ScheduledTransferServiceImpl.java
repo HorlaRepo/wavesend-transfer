@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.cache.Cache;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,14 +34,13 @@ import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.kafka.NotificationProducer;
 import com.shizzy.moneytransfer.model.ScheduledTransfer;
 import com.shizzy.moneytransfer.repository.ScheduledTransferRepository;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.MoneyTransferService;
 import com.shizzy.moneytransfer.service.OtpService;
 import com.shizzy.moneytransfer.service.ScheduledTransferService;
 import com.shizzy.moneytransfer.util.CacheNames;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,7 +51,7 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
 
     private final ScheduledTransferRepository scheduledTransferRepository;
     private final MoneyTransferService moneyTransferService;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private final NotificationProducer notificationProducer;
 
     private final OtpService otpService;
@@ -70,8 +69,10 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     public ApiResponse<ScheduledTransferResponseDTO> scheduleTransfer(ScheduledTransferRequestDTO request,
             String userId) {
         // Validate users exist
-        keycloakService.existsUserByEmail(request.senderEmail());
-        keycloakService.existsUserByEmail(request.receiverEmail());
+        userRepository.findByEmail(request.senderEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        userRepository.findByEmail(request.receiverEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         // Validate schedule time
         if (request.scheduledDateTime().isBefore(LocalDateTime.now())) {
@@ -463,11 +464,8 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     public ApiResponse<ScheduledTransferInitiationResponse> initiateScheduledTransfer(
             ScheduledTransferRequestDTO request, String userId) {
         // Validate request and user
-        ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-        if (!userResponse.isSuccess() || userResponse.getData() == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        var user = userResponse.getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Ensure it's the user's own transfer
         if (!user.getEmail().equals(request.senderEmail())) {
@@ -528,11 +526,8 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
     public ApiResponse<ScheduledTransferResponseDTO> verifyAndScheduleTransfer(
             ScheduledTransferVerificationRequest request, String userId) {
         // Verify user
-        ApiResponse<UserRepresentation> userResponse = keycloakService.getUserById(userId);
-        if (!userResponse.isSuccess() || userResponse.getData() == null) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        var user = userResponse.getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         try {
 
@@ -583,7 +578,7 @@ public class ScheduledTransferServiceImpl implements ScheduledTransferService {
 
     private String getReceiverName(String email) {
         try {
-            UserRepresentation user = keycloakService.getUserByEmail(email);
+            User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
                 return user.getFirstName() + " " + user.getLastName();
             } else {

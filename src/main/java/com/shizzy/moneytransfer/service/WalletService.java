@@ -22,6 +22,7 @@ public interface WalletService {
     Wallet findWalletOrThrow(String walletId);
     void verifyWalletBalance(BigDecimal balance, BigDecimal amount);
     ApiResponse<Wallet> getWalletByCreatedBy(Authentication connectedUser);
+    ApiResponse<Wallet> getWalletByUserId(String userId);
     BigDecimal getWalletBalance(String walletId);
     Wallet updateWallet(Wallet wallet);
     void deposit(Wallet destinationWallet, BigDecimal amount);

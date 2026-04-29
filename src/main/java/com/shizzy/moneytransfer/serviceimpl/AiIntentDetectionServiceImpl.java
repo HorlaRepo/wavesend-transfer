@@ -8,15 +8,32 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiIntentDetectionServiceImpl implements AiIntentDetectionService {
 
     private final GeminiAiClient geminiAiClient;
+
+    private static final List<Pattern> CHECK_BALANCE_PATTERNS = List.of(
+            Pattern.compile("^balance\\??$"),
+            Pattern.compile("\\bcheck (?:my )?(?:wallet |account )?balance\\b"),
+            Pattern.compile("\\b(?:what(?:'s| is)|show me|tell me) (?:my )?(?:wallet |account )?balance\\b"),
+            Pattern.compile("\\b(?:current|available|remaining) balance\\b"),
+            Pattern.compile("\\bwallet balance\\b"),
+            Pattern.compile("\\bhow much (?:money )?(?:do i have|is in my wallet|is left in my wallet)\\b"));
     
     @Override
     public Mono<TransactionIntent> detectTransactionIntent(String userId, String message) {
+        if (isBalanceCheckMessage(message)) {
+            log.info("Detected balance check intent from keywords for user {}: '{}'", userId, message);
+            return Mono.just(TransactionIntent.CHECK_BALANCE);
+        }
+
         String systemInstruction = 
             "You are a financial assistant API for a money transfer application. " +
             "Classify the user's intent into one of these categories: " +
@@ -51,5 +68,19 @@ public class AiIntentDetectionServiceImpl implements AiIntentDetectionService {
                 log.error("Error detecting intent: {}", e.getMessage());
                 return Mono.just(TransactionIntent.UNKNOWN);
             });
+    }
+
+    private boolean isBalanceCheckMessage(String message) {
+        if (message == null) {
+            return false;
+        }
+
+        String normalizedMessage = message.trim().toLowerCase(Locale.ROOT);
+        if (normalizedMessage.isBlank()) {
+            return false;
+        }
+
+        return CHECK_BALANCE_PATTERNS.stream()
+                .anyMatch(pattern -> pattern.matcher(normalizedMessage).find());
     }
 }

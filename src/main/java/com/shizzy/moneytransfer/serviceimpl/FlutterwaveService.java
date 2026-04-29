@@ -17,7 +17,8 @@ import com.shizzy.moneytransfer.model.TransactionReference;
 import com.shizzy.moneytransfer.model.Wallet;
 import com.shizzy.moneytransfer.repository.TransactionReferenceRepository;
 import com.shizzy.moneytransfer.repository.TransactionRepository;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.model.User;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.PaymentService;
 import com.shizzy.moneytransfer.service.TransactionReferenceService;
 import com.shizzy.moneytransfer.service.WalletService;
@@ -27,8 +28,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.web.client.HttpStatusCodeException;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.slf4j.Logger;
+import java.util.UUID;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -54,7 +56,7 @@ public class FlutterwaveService implements PaymentService {
     private final TransactionReferenceRepository referenceRepository;
     private final WalletService walletService;
     private NotificationProducer notificationProducer;
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
 
     @Value("${flutterwave.api.live-key}")
     private String apiKey;
@@ -396,12 +398,13 @@ public class FlutterwaveService implements PaymentService {
     }
 
     private TransferInfo getTransferInfo(String userId) {
-        UserRepresentation userRepresentation = keycloakService.getUserById(userId).getData();
+        User user = userRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return TransferInfo.builder()
-                .senderName(userRepresentation.getFirstName() + " " + userRepresentation.getLastName())
-                .senderEmail(userRepresentation.getEmail())
-                .senderId(userRepresentation.getId())
+                .senderName(user.getFirstName() + " " + user.getLastName())
+                .senderEmail(user.getEmail())
+                .senderId(user.getUserId().toString())
                 .build();
     }
 

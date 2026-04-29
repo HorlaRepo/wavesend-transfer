@@ -18,7 +18,7 @@ import com.shizzy.moneytransfer.exception.InsufficientBalanceException;
 import com.shizzy.moneytransfer.model.ScheduledTransfer;
 import com.shizzy.moneytransfer.repository.ScheduledTransferRepository;
 import com.shizzy.moneytransfer.service.EmailService;
-import com.shizzy.moneytransfer.service.KeycloakService;
+import com.shizzy.moneytransfer.repository.UserRepository;
 import com.shizzy.moneytransfer.service.MoneyTransferService;
 import com.shizzy.moneytransfer.serviceimpl.ScheduledTransferServiceImpl;
 
@@ -37,7 +37,7 @@ public class ScheduledTransferConsumer {
     private final MoneyTransferService moneyTransferService;
     private final NotificationProducer notificationProducer;
 
-    private final KeycloakService keycloakService;
+    private final UserRepository userRepository;
     private EmailService emailService;
     private final ScheduledTransferServiceImpl scheduledTransferServiceImpl;
 

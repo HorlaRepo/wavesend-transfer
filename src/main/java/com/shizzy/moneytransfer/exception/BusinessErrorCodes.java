@@ -26,4 +26,16 @@ public enum BusinessErrorCodes {
         this.message = message;
         this.httpStatus = httpStatus;
     }
+
+    public int getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
+    }
 }
