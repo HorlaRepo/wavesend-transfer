@@ -184,11 +184,13 @@ public class AuthServiceImpl implements AuthService {
                         .build();
             }
 
-            // Generate JWT token
+            // Generate JWT tokens
             String accessToken = jwtTokenProvider.generateAccessToken(user);
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user);
 
             JwtResponseDTO response = JwtResponseDTO.builder()
                     .accessToken(accessToken)
+                    .refreshToken(refreshToken)
                     .username(user.getEmail())
                     .twoFactorRequired(false)
                     .build();
@@ -417,11 +419,13 @@ public class AuthServiceImpl implements AuthService {
         token.setValidatedAt(LocalDateTime.now());
         tokenRepository.save(token);
 
-        // Generate JWT
+        // Generate JWT tokens
         String accessToken = jwtTokenProvider.generateAccessToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
 
         JwtResponseDTO response = JwtResponseDTO.builder()
                 .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .username(user.getEmail())
                 .twoFactorRequired(false)
                 .build();
@@ -431,6 +435,37 @@ public class AuthServiceImpl implements AuthService {
         return ApiResponse.<JwtResponseDTO>builder()
                 .success(true)
                 .message("Authentication successful")
+                .data(response)
+                .build();
+    }
+
+    @Override
+    public ApiResponse<JwtResponseDTO> refreshToken(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new OperationNotPermittedException("Invalid or expired refresh token");
+        }
+
+        String email = jwtTokenProvider.extractEmail(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!user.isEnabled()) {
+            throw new OperationNotPermittedException("Account is not activated");
+        }
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user);
+
+        JwtResponseDTO response = JwtResponseDTO.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .username(user.getEmail())
+                .twoFactorRequired(false)
+                .build();
+
+        return ApiResponse.<JwtResponseDTO>builder()
+                .success(true)
+                .message("Token refreshed successfully")
                 .data(response)
                 .build();
     }

@@ -164,11 +164,11 @@ public class AiFinancialServiceImpl implements AiFinancialService {
         String formattedAmount = String.format(Locale.US, "%,.2f", balance);
 
         return String.format(
-            "Balance: %s %s\nCurrency: %s\nWallet ID: %s",
+            "Balance: %s %s\nCurrency: %s\nWallet Number: %s",
             currency.toUpperCase(Locale.ROOT),
             formattedAmount,
             currency.toUpperCase(Locale.ROOT),
-            wallet.getId()
+            wallet.getWalletId()
         );
     }
 

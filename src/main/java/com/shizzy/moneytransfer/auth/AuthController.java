@@ -99,4 +99,9 @@ public class AuthController {
             @RequestParam String code) {
         return ResponseEntity.ok(authService.verifyTwoFactorCode(username, code));
     }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<ApiResponse<JwtResponseDTO>> refreshToken(@RequestParam String refreshToken) {
+        return ResponseEntity.ok(authService.refreshToken(refreshToken));
+    }
 }

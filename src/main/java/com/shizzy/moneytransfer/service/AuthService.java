@@ -16,4 +16,5 @@ public interface AuthService {
     ApiResponse<String> changePassword(User user, ChangePasswordRequest request);
     ApiResponse<String> toggleTwoFactor(User user, boolean enable);
     ApiResponse<JwtResponseDTO> verifyTwoFactorCode(String username, String code);
+    ApiResponse<JwtResponseDTO> refreshToken(String refreshToken);
 }

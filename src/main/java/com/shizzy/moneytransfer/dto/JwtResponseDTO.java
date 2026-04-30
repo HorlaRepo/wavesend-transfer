@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class JwtResponseDTO {
     private String accessToken;
+    private String refreshToken;
     private String username;
     private boolean twoFactorRequired;
     private boolean activationRequired;
