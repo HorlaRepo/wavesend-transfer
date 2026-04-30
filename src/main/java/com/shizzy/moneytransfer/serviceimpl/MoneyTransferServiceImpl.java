@@ -27,6 +27,7 @@ import com.shizzy.moneytransfer.service.TransactionLimitService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -56,7 +57,8 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final TransactionLimitService transactionLimitService;
     private final AccountLimitService accountLimitService;
     private final RefundImpactRecordRepository refundImpactRecordRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Qualifier("pendingTransferRedisTemplate")
+    private final RedisTemplate<String, CreateTransactionRequestBody> redisTemplate;
 
     // Constants
     private static final String TRANSFER_OPERATION = "Money Transfer";
@@ -379,8 +381,7 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
 
         // Retrieve pending transfer from Redis
         String redisKey = PENDING_TRANSFER_PREFIX + request.getTransferToken();
-        CreateTransactionRequestBody requestBody =
-                (CreateTransactionRequestBody) redisTemplate.opsForValue().get(redisKey);
+        CreateTransactionRequestBody requestBody = redisTemplate.opsForValue().get(redisKey);
 
         if (requestBody == null) {
             log.warn("Transfer request not found for token: {}", request.getTransferToken());

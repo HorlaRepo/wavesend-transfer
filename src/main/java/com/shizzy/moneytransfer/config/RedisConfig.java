@@ -3,6 +3,8 @@ package com.shizzy.moneytransfer.config;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.shizzy.moneytransfer.dto.CreateTransactionRequestBody;
+import com.shizzy.moneytransfer.dto.OtpData;
 import com.shizzy.moneytransfer.util.CacheNames;
 
 import io.lettuce.core.ClientOptions;
@@ -28,6 +30,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceClientConfigurat
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.cache.interceptor.KeyGenerator;
@@ -168,6 +171,32 @@ public class RedisConfig {
 
         logger.info("Configured RedisTemplate with consistent serializers");
         return redisTemplate;
+    }
+
+    @Bean
+    public RedisTemplate<String, CreateTransactionRequestBody> pendingTransferRedisTemplate(
+            LettuceConnectionFactory lettuceConnectionFactory,
+            ObjectMapper objectMapper) {
+        RedisTemplate<String, CreateTransactionRequestBody> template = new RedisTemplate<>();
+        template.setConnectionFactory(lettuceConnectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        Jackson2JsonRedisSerializer<CreateTransactionRequestBody> serializer =
+                new Jackson2JsonRedisSerializer<>(objectMapper, CreateTransactionRequestBody.class);
+        template.setValueSerializer(serializer);
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, OtpData> otpDataRedisTemplate(
+            LettuceConnectionFactory lettuceConnectionFactory,
+            ObjectMapper objectMapper) {
+        RedisTemplate<String, OtpData> template = new RedisTemplate<>();
+        template.setConnectionFactory(lettuceConnectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        Jackson2JsonRedisSerializer<OtpData> serializer =
+                new Jackson2JsonRedisSerializer<>(objectMapper, OtpData.class);
+        template.setValueSerializer(serializer);
+        return template;
     }
 
     /**

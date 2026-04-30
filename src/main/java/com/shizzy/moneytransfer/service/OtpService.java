@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
@@ -41,7 +42,8 @@ public class OtpService {
     private EmailService emailService;
     private final CacheManager cacheManager;
     private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Qualifier("otpDataRedisTemplate")
+    private final RedisTemplate<String, OtpData> redisTemplate;
 
     private static final int OTP_VALIDITY_MINUTES = 5;
     private static final int OTP_LENGTH = 6;
@@ -111,7 +113,7 @@ public class OtpService {
         String cacheKey = OTP_KEY_PREFIX + createCacheKey(userEmail, operation);
 
         // Get OTP data from Redis
-        OtpData otpData = (OtpData) redisTemplate.opsForValue().get(cacheKey);
+        OtpData otpData = redisTemplate.opsForValue().get(cacheKey);
 
         if (otpData == null) {
             log.warn("No OTP found for user {} and operation {}", userEmail, operation);
