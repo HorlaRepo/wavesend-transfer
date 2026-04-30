@@ -19,7 +19,7 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
 
     private final Environment environment;
     
-    @Value("${app.frontend.url:https://app.wavesend.cc}")
+    @Value("${app.frontend.url:https://wavesend-app.netlify.app}")
     private String frontendUrl;
     
     public SecurityHeadersFilter(Environment environment) {

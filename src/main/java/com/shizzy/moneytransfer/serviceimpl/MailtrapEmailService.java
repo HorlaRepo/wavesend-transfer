@@ -58,6 +58,9 @@ public class MailtrapEmailService implements EmailService {
     @Value("${mailtrap.sender-name:WaveSend}")
     private String senderName;
 
+    @Value("${app.frontend.url:https://wavesend-app.netlify.app}")
+    private String frontendUrl;
+
     private static final String MAILTRAP_API_URL = "https://send.api.mailtrap.io/api/send";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm:ss");
     private static final Pattern TEMPLATE_PATTERN = Pattern.compile("\\{\\{([^}]+)\\}\\}");
@@ -191,7 +194,7 @@ public class MailtrapEmailService implements EmailService {
             data.put("description", transaction.getDescription());
             data.put("status", transaction.getCurrentStatus());
             data.put("new_balance", transaction.getWallet().getBalance().toString());
-            data.put("dashboard_url", "https://app.wavesend.cc/account/transactions");
+            data.put("dashboard_url", "https://wavesend-app.netlify.app/account/transactions");
             data.put("facebook_url", "https://facebook.com/wavesend");
             data.put("twitter_url", "https://twitter.com/wavesend");
             data.put("instagram_url", "https://instagram.com/wavesend");
@@ -219,7 +222,7 @@ public class MailtrapEmailService implements EmailService {
             params.put("description", transaction.getDescription());
             params.put("status", transaction.getCurrentStatus());
             params.put("new_balance", transaction.getWallet().getBalance().toString());
-            params.put("dashboard_url", "https://app.wavesend.cc/account/transactions");
+            params.put("dashboard_url", "https://wavesend-app.netlify.app/account/transactions");
             params.put("facebook_url", "https://facebook.com/wavesend");
             params.put("twitter_url", "https://twitter.com/wavesend");
             params.put("instagram_url", "https://instagram.com/wavesend");
@@ -260,7 +263,7 @@ public class MailtrapEmailService implements EmailService {
             params.put("description", emailDto.getTransaction().getDescription());
             params.put("status", emailDto.getTransaction().getCurrentStatus());
             params.put("new_balance", emailDto.getTransaction().getWallet().getBalance().toString());
-            params.put("dashboard_url", "https://app.wavesend.cc/account/transactions");
+            params.put("dashboard_url", "https://wavesend-app.netlify.app/account/transactions");
             params.put("facebook_url", "https://facebook.com/wavesend");
             params.put("twitter_url", "https://twitter.com/wavesend");
             params.put("instagram_url", "https://instagram.com/wavesend");
@@ -291,7 +294,7 @@ public class MailtrapEmailService implements EmailService {
             params.put("description", emailDto.getTransaction().getDescription());
             params.put("status", emailDto.getTransaction().getCurrentStatus());
             params.put("new_balance", emailDto.getTransaction().getWallet().getBalance().toString());
-            params.put("dashboard_url", "https://app.wavesend.cc/account/transactions");
+            params.put("dashboard_url", "https://wavesend-app.netlify.app/account/transactions");
             params.put("facebook_url", "https://facebook.com/wavesend");
             params.put("twitter_url", "https://twitter.com/wavesend");
             params.put("instagram_url", "https://instagram.com/wavesend");
@@ -391,7 +394,7 @@ public class MailtrapEmailService implements EmailService {
             }
         }
 
-        params.put("dashboard_url", "https://app.wavesend.cc/account/scheduled-transfers");
+        params.put("dashboard_url", "https://wavesend-app.netlify.app/account/scheduled-transfers");
         params.put("facebook_url", "https://facebook.com/wavesend");
         params.put("twitter_url", "https://twitter.com/wavesend");
         params.put("instagram_url", "https://instagram.com/wavesend");
