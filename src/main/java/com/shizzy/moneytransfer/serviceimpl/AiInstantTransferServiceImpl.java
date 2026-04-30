@@ -395,18 +395,27 @@ public class AiInstantTransferServiceImpl {
                             " attempts remaining.\n\nYou can also type 'resend code' to get a new verification code.");
                 }
             }
-        } catch (Exception e) {
-            log.error("Error verifying transfer", e);
-
-            // Don't fail immediately - give another chance if not too many attempts
+        } catch (com.shizzy.moneytransfer.exception.InsufficientBalanceException e) {
+            state.reset();
+            return Mono.just("❌ Transfer failed: " + e.getMessage() +
+                    "\n\nPlease deposit funds and try again.");
+        } catch (com.shizzy.moneytransfer.exception.TransactionLimitExceededException e) {
+            state.reset();
+            return Mono.just("❌ Transfer failed: " + e.getMessage());
+        } catch (java.lang.IllegalArgumentException e) {
+            // OTP/token errors — let user retry
             if (state.getOtpAttempts() >= MAX_OTP_ATTEMPTS) {
                 state.setStage(ConversationState.TransactionStage.TRANSACTION_FAILED);
-                return Mono.just("Sorry, there was an error processing your verification code and you've reached " +
-                        "the maximum number of attempts. Please try your transfer again.");
-            } else {
-                return Mono.just("Sorry, there was an error verifying your code. Please try again. " +
-                        "You can also type 'resend code' if you need a new verification code.");
+                return Mono.just("Sorry, you've reached the maximum number of verification attempts. " +
+                        "The transfer has been cancelled. Please try again.");
             }
+            return Mono.just("The verification code is incorrect or has expired. Please try again. " +
+                    "You have " + (MAX_OTP_ATTEMPTS - state.getOtpAttempts()) +
+                    " attempts remaining.\n\nYou can also type 'resend code' to get a new code.");
+        } catch (Exception e) {
+            log.error("Error verifying transfer", e);
+            state.reset();
+            return Mono.just("❌ Transfer failed: " + e.getMessage());
         }
     }
 
