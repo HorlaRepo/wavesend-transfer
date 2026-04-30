@@ -27,7 +27,7 @@ import com.shizzy.moneytransfer.service.TransactionLimitService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 @Service
@@ -57,36 +56,12 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
     private final TransactionLimitService transactionLimitService;
     private final AccountLimitService accountLimitService;
     private final RefundImpactRecordRepository refundImpactRecordRepository;
-
-    // In-memory store for pending transfers
-    private final Map<String, PendingTransfer> pendingTransfers = new ConcurrentHashMap<>();
+    private final RedisTemplate<String, Object> redisTemplate;
 
     // Constants
     private static final String TRANSFER_OPERATION = "Money Transfer";
     private static final Duration TRANSFER_EXPIRY = Duration.ofMinutes(15);
-
-    // Inner class to track pending transfers with timestamps
-    private static class PendingTransfer {
-        private final CreateTransactionRequestBody requestBody;
-        private final LocalDateTime createdAt;
-
-        public PendingTransfer(CreateTransactionRequestBody requestBody) {
-            this.requestBody = requestBody;
-            this.createdAt = LocalDateTime.now();
-        }
-
-        public CreateTransactionRequestBody getRequestBody() {
-            return requestBody;
-        }
-
-        public LocalDateTime getCreatedAt() {
-            return createdAt;
-        }
-
-        public boolean isExpired() {
-            return LocalDateTime.now().isAfter(createdAt.plus(TRANSFER_EXPIRY));
-        }
-    }
+    private static final String PENDING_TRANSFER_PREFIX = "pending_transfer:";
 
     @Override
     public ApiResponse<TransactionResponseDTO> transfer(CreateTransactionRequestBody requestBody) {
@@ -354,8 +329,9 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
         // Generate unique token for this transfer request
         String transferToken = UUID.randomUUID().toString();
 
-        // Store pending transfer in our in-memory map
-        pendingTransfers.put(transferToken, new PendingTransfer(requestBody));
+        // Store pending transfer in Redis so all replicas can access it
+        redisTemplate.opsForValue().set(
+                PENDING_TRANSFER_PREFIX + transferToken, requestBody, TRANSFER_EXPIRY);
         log.info("Stored pending transfer with token: {}", transferToken);
 
         // Get recipient name for OTP email
@@ -401,50 +377,24 @@ public class MoneyTransferServiceImpl implements MoneyTransferService {
             throw new IllegalArgumentException("Invalid or expired verification code");
         }
 
-        // Retrieve pending transfer from our in-memory map
-        PendingTransfer pendingTransfer = pendingTransfers.get(request.getTransferToken());
+        // Retrieve pending transfer from Redis
+        String redisKey = PENDING_TRANSFER_PREFIX + request.getTransferToken();
+        CreateTransactionRequestBody requestBody =
+                (CreateTransactionRequestBody) redisTemplate.opsForValue().get(redisKey);
 
-        if (pendingTransfer == null) {
+        if (requestBody == null) {
             log.warn("Transfer request not found for token: {}", request.getTransferToken());
             throw new IllegalArgumentException("Transfer request expired or not found");
         }
 
-        // Check if transfer request is expired
-        if (pendingTransfer.isExpired()) {
-            log.warn("Transfer request expired for token: {}", request.getTransferToken());
-            pendingTransfers.remove(request.getTransferToken());
-            throw new IllegalArgumentException("Transfer request expired");
-        }
-
-        CreateTransactionRequestBody requestBody = pendingTransfer.getRequestBody();
-
         // Clean up
-        pendingTransfers.remove(request.getTransferToken());
+        redisTemplate.delete(redisKey);
         log.info("Removed pending transfer with token: {}", request.getTransferToken());
 
         // Execute the actual transfer
         return transfer(requestBody);
     }
 
-    /**
-     * Scheduled task to clean up expired pending transfers
-     * Runs every 5 minutes
-     */
-    @Scheduled(fixedRate = 5 * 60 * 1000) // 5 minutes
-    public void cleanupExpiredTransfers() {
-        int removedCount = 0;
-
-        for (Map.Entry<String, PendingTransfer> entry : pendingTransfers.entrySet()) {
-            if (entry.getValue().isExpired()) {
-                pendingTransfers.remove(entry.getKey());
-                removedCount++;
-            }
-        }
-
-        if (removedCount > 0) {
-            log.info("Cleaned up {} expired pending transfers", removedCount);
-        }
-    }
 
     /**
      * Creates an audit record of how a transfer impacted a deposit's refundable

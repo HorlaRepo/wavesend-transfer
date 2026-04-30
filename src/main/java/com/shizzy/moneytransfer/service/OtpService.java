@@ -5,12 +5,12 @@ import java.time.format.DateTimeFormatter;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
@@ -27,6 +27,7 @@ import com.shizzy.moneytransfer.exception.UnauthorizedAccessException;
 import com.shizzy.moneytransfer.model.User;
 import com.shizzy.moneytransfer.repository.UserRepository;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import jakarta.mail.MessagingException;
@@ -40,13 +41,11 @@ public class OtpService {
     private EmailService emailService;
     private final CacheManager cacheManager;
     private final UserRepository userRepository;
-    
-    // In-memory cache for OTPs - this will work better than trying to use Spring's cache
-    // for clean-up operations
-    private final Map<String, OtpData> otpStore = new ConcurrentHashMap<>();
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private static final int OTP_VALIDITY_MINUTES = 5;
     private static final int OTP_LENGTH = 6;
+    private static final String OTP_KEY_PREFIX = "otp:";
 
     // Operation constants
     private static final String TRANSFER_OPERATION = "Money Transfer";
@@ -71,8 +70,11 @@ public class OtpService {
         String otp = generateOtp();
         String cacheKey = createCacheKey(userEmail, operation);
 
-        // Store OTP in our in-memory map
-        otpStore.put(cacheKey, new OtpData(otp, LocalDateTime.now(), operationDetails));
+        // Store OTP in Redis with TTL
+        redisTemplate.opsForValue().set(
+                OTP_KEY_PREFIX + cacheKey,
+                new OtpData(otp, LocalDateTime.now(), operationDetails),
+                Duration.ofMinutes(OTP_VALIDITY_MINUTES));
 
         // Send OTP via email
         Map<String, Object> templateData = new HashMap<>();
@@ -106,31 +108,24 @@ public class OtpService {
      * @return OperationDetails if OTP is valid, null otherwise
      */
     public Map<String, Object> verifyOtp(String userEmail, String operation, String providedOtp) {
-        String cacheKey = createCacheKey(userEmail, operation);
-        
-        // Get OTP data from our in-memory map
-        OtpData otpData = otpStore.get(cacheKey);
-        
+        String cacheKey = OTP_KEY_PREFIX + createCacheKey(userEmail, operation);
+
+        // Get OTP data from Redis
+        OtpData otpData = (OtpData) redisTemplate.opsForValue().get(cacheKey);
+
         if (otpData == null) {
             log.warn("No OTP found for user {} and operation {}", userEmail, operation);
-            return null; // No OTP found
+            return null;
         }
 
         if (!otpData.getOtp().equals(providedOtp)) {
             log.warn("Invalid OTP provided for user {} and operation {}", userEmail, operation);
-            return null; // Invalid OTP
-        }
-
-        // Check if OTP is expired
-        if (LocalDateTime.now().isAfter(otpData.getCreatedAt().plusMinutes(OTP_VALIDITY_MINUTES))) {
-            otpStore.remove(cacheKey);
-            log.warn("OTP expired for user {} and operation {}", userEmail, operation);
             return null;
         }
 
         // Valid OTP - remove it after successful verification (single use)
         Map<String, Object> operationDetails = otpData.getOperationDetails();
-        otpStore.remove(cacheKey);
+        redisTemplate.delete(cacheKey);
         log.info("OTP verified successfully for user {} and operation {}", userEmail, operation);
         return operationDetails;
     }
@@ -307,36 +302,11 @@ public class OtpService {
     }
     
     /**
-     * Clear all expired OTPs from the cache
-     * This method iterates through all entries and removes those that have expired
-     */
-    public void clearExpiredOtps() {
-        // No more Redis, we can directly iterate through our in-memory map
-        int count = 0;
-        
-        for (Map.Entry<String, OtpData> entry : otpStore.entrySet()) {
-            OtpData otpData = entry.getValue();
-            
-            // Check if OTP is expired
-            if (LocalDateTime.now().isAfter(otpData.getCreatedAt().plusMinutes(OTP_VALIDITY_MINUTES))) {
-                otpStore.remove(entry.getKey());
-                count++;
-            }
-        }
-        
-        if (count > 0) {
-            log.info("Cleared {} expired OTP entries from in-memory cache", count);
-        } else {
-            log.debug("No expired OTP entries found in cache");
-        }
-    }
-
-    /**
      * Clear existing OTP for a user and operation
      */
     private void clearExistingOtp(String userEmail, String operation) {
-        String cacheKey = createCacheKey(userEmail, operation);
-        otpStore.remove(cacheKey);
+        String cacheKey = OTP_KEY_PREFIX + createCacheKey(userEmail, operation);
+        redisTemplate.delete(cacheKey);
         log.debug("Cleared existing OTP for user {} and operation {}", userEmail, operation);
     }
 
