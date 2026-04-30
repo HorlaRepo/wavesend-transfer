@@ -1,15 +1,14 @@
 package com.shizzy.moneytransfer.kafka;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ScheduledTransferNotificationConsumer {
 
     private static final String TOPIC_NOTIFICATIONS = "scheduled-transfer-notifications";
+
+    @Value("${app.frontend.url:https://wavesend-app.netlify.app}")
+    private String frontendUrl;
 
     private EmailService emailService;
     private final UserRepository userRepository;
@@ -91,7 +93,7 @@ public class ScheduledTransferNotificationConsumer {
             }
 
             // Add social media URLs
-            templateModel.put("dashboard_url", "http://localhost:4200/account/scheduled-transfers");
+            templateModel.put("dashboard_url", frontendUrl + "/account/scheduled-transfers");
             templateModel.put("facebook_url", "https://facebook.com/wavesend");
             templateModel.put("twitter_url", "https://twitter.com/wavesend");
             templateModel.put("instagram_url", "https://instagram.com/wavesend");

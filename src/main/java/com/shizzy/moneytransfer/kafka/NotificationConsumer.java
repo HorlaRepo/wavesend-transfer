@@ -3,7 +3,6 @@ package com.shizzy.moneytransfer.kafka;
 import com.shizzy.moneytransfer.dto.TransactionNotification;
 import com.shizzy.moneytransfer.dto.TransferEmailDto;
 import com.shizzy.moneytransfer.enums.TransactionOperation;
-import com.shizzy.moneytransfer.exception.ResourceNotFoundException;
 import com.shizzy.moneytransfer.model.UserNotificationPreferences;
 import com.shizzy.moneytransfer.repository.UserNotificationPreferencesRepository;
 import com.shizzy.moneytransfer.service.EmailService;
@@ -56,7 +55,7 @@ public class NotificationConsumer {
         String userEmail = transactionNotification.getTransferInfo().getSenderEmail();
 
         UserNotificationPreferences userPreferences = userPreferencesRepository.findByCreatedBy(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User notification preferences not found"));
+                .orElseGet(() -> defaultPreferences(userId));
 
         boolean shouldNotify = switch (transactionNotification.getOperation()) {
             case WITHDRAWAL -> userPreferences.isNotifyOnWithdraw();
@@ -91,10 +90,10 @@ public class NotificationConsumer {
         String receiverName = transactionNotification.getTransferInfo().getReceiverName();
 
         UserNotificationPreferences senderPreferences = userPreferencesRepository.findByCreatedBy(senderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Sender notification preferences not found"));
+                .orElseGet(() -> defaultPreferences(senderId));
 
         UserNotificationPreferences receiverPreferences = userPreferencesRepository.findByCreatedBy(receiverId)
-                .orElseThrow(() -> new ResourceNotFoundException("Receiver notification preferences not found"));
+                .orElseGet(() -> defaultPreferences(receiverId));
 
 
         if (senderPreferences.isNotifyOnSend()) {
@@ -128,5 +127,19 @@ public class NotificationConsumer {
             emailService.sendCreditTransferEmail(receiverEmailDto);
             logger.info("Sent credit transfer email to receiver: {}", receiverEmail);
         }
+    }
+
+    private UserNotificationPreferences defaultPreferences(String userId) {
+        log.warn("No notification preferences found for user {}, using defaults (all enabled)", userId);
+        return UserNotificationPreferences.builder()
+                .notifyOnSend(true)
+                .notifyOnReceive(true)
+                .notifyOnDeposit(true)
+                .notifyOnWithdraw(true)
+                .notifyOnPaymentFailure(true)
+                .notifyOnScheduledTransfers(true)
+                .notifyOnExecutedTransfers(true)
+                .notifyOnCancelledTransfers(true)
+                .build();
     }
 }
