@@ -157,17 +157,9 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findByEmail(authRequestDTO.getUsername())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            // Check if account is enabled
-            if (!user.isEnabled()) {
-                // Resend activation code
-                try {
-                    sendVerificationEmail(user);
-                    log.info("Resent activation code to unactivated user: {}", user.getEmail());
-                } catch (MessagingException e) {
-                    log.error("Failed to resend activation code to: {}", user.getEmail(), e);
-                }
-                throw new DisabledException("Account not activated. A new activation code has been sent to your email.");
-            }
+            // Note: If account is disabled, Spring Security's AuthenticationManager
+            // throws DisabledException before reaching here. The email resend is handled
+            // in the catch block below.
 
             // Check if account is locked
             if (user.isAccountLocked()) {
@@ -213,7 +205,18 @@ public class AuthServiceImpl implements AuthService {
             log.error("Bad credentials for user: {}", authRequestDTO.getUsername());
             throw new BadCredentialsException("Invalid email or password");
         } catch (DisabledException e) {
-            log.error("Account disabled for user: {}", authRequestDTO.getUsername());
+            log.info("Account disabled for user: {}, resending activation code", authRequestDTO.getUsername());
+            // Resend activation code
+            User disabledUser = userRepository.findByEmail(authRequestDTO.getUsername()).orElse(null);
+            if (disabledUser != null) {
+                try {
+                    sendVerificationEmail(disabledUser);
+                    log.info("Resent activation code to unactivated user: {}", disabledUser.getEmail());
+                } catch (MessagingException me) {
+                    log.error("Failed to resend activation code to: {}", disabledUser.getEmail(), me);
+                }
+            }
+
             // Return special response for unactivated accounts
             JwtResponseDTO response = JwtResponseDTO.builder()
                     .accessToken(null)
