@@ -4,11 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, PostgreSQL, Redis, and Kafka. It integrates with Stripe, Flutterwave, and Paystack for payment processing, and Keycloak for authentication.
+WaveSend is a money transfer application with a Spring Boot backend and Angular frontend, deployed on Azure.
+
+- **Backend**: Spring Boot 3.2.1, Java 17, PostgreSQL, Redis, Kafka
+- **Frontend**: Angular 16, PrimeNG, Bootstrap, angular-code-input
+- **Payment Providers**: Stripe, Flutterwave, Paystack
+- **Authentication**: Custom JWT (access + refresh tokens) — Keycloak was removed
+- **Email**: Mailtrap (via REST API) — Brevo was removed
+- **AI**: OpenRouter / Gemini for financial assistant
+
+## Repository Structure
+
+```
+/Users/francis/IdeaProjects/money-transfer/
+├── backend/          ← This repo (Spring Boot)
+└── frontend/angular/money-transfer/   ← Angular frontend (separate Git repo)
+```
+
+**Git Repos:**
+- Backend: https://github.com/HorlaRepo/wavesend-transfer
+- Frontend: https://github.com/HorlaRepo/wavesend-app
 
 ## Build & Development Commands
 
-### Building & Running
+### Backend - Building & Running
 ```bash
 # Clean and build
 ./mvnw clean install
@@ -16,11 +35,22 @@ WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, 
 # Run application (requires environment variables - see .env file)
 ./mvnw spring-boot:run
 
-# Build Docker image (multi-platform)
-./mvnw jib:build -Ddocker.image.tag=<version>
+# Compile only (fast check)
+./mvnw compile -q
+```
 
-# Build Keycloak event listener JAR
-./mvnw clean package -P event-listener
+### Frontend - Building & Running
+```bash
+cd ../frontend/angular/money-transfer
+
+# Install dependencies
+npm install
+
+# Run dev server
+ng serve
+
+# Production build
+ng build --configuration=production
 ```
 
 ### Testing
@@ -60,10 +90,11 @@ WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, 
 - Payment method handlers in `service/payment/handler/`
 
 **User & Security:**
-- Keycloak integration for OAuth2/OIDC authentication
-- Custom Keycloak event listener (build with `-P event-listener` profile)
+- Custom JWT authentication (access token 1hr + refresh token 7 days)
+- `JwtTokenProvider` generates/validates tokens, `JwtAuthenticationFilter` extracts from requests
 - `KycVerificationService` manages user verification levels
 - `AccountLimitService` enforces transaction limits based on KYC tier
+- `OtpService` handles OTP for transfers/withdrawals (separate from account activation)
 
 **Scheduled Transfer Architecture:**
 - `ScheduledTransferPublisherService` - @Scheduled task (every 60s) scans for due transfers, publishes to Kafka topic `scheduled-transfers-execution`
@@ -106,9 +137,10 @@ WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, 
 - Base path: `/api/v1/`
 - Port: 8080
 - Database: PostgreSQL with Flyway migrations (`src/main/resources/db/migration/`)
-- Cache: Redis + Caffeine
-- OAuth2 Resource Server: Validates JWT from Keycloak
-- CORS: Configured to allow all origins in dev (check SecurityConfig for restrictions)
+- Cache: Redis (Azure Cache for Redis with SSL on port 6380)
+- Authentication: Custom JWT (not Keycloak) — see `JwtTokenProvider`, `JwtAuthenticationFilter`
+- CORS: Configured in SecurityConfig (allows `https://app.wavesend.cc`)
+- Email: Mailtrap REST API (`MailtrapEmailService` with `@Primary`)
 
 ## Important Implementation Details
 
@@ -135,8 +167,9 @@ WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, 
 - Cache keys follow pattern: `transaction:{id}`, `wallet:{userId}`
 
 ### AI Financial Service
-- `AiFinancialService` and `ConversationManagerService` integrate with OpenRouter API
+- `AiFinancialService` and `ConversationManagerService` integrate with Gemini/OpenRouter
 - Provides financial insights and conversation management
+- IMPORTANT: Never expose internal IDs (wallet.id) to AI context — use user-facing identifiers (wallet.walletId)
 
 ## Testing
 - Unit tests use Mockito and JUnit 5
@@ -147,15 +180,160 @@ WaveSend is a money transfer application built with Spring Boot 3.2.1, Java 17, 
 ## Environment Variables
 All required variables are in `.env` file (not committed to prod). Key variables:
 - `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` - PostgreSQL connection
-- `REDIS_HOST`, `REDIS_PORT` - Redis connection
-- `KAFKA_BOOTSTRAP_SERVERS` - Kafka broker
-- `JWT_ISSUER_URI` - Keycloak realm endpoint
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` - Azure Redis (SSL, port 6380)
+- `KAFKA_BOOTSTRAP_SERVERS`, `EVENTHUB_CONNECTION_STRING` - Azure Event Hubs (Kafka protocol)
+- `JWT_SECRET_KEY` - HMAC key for signing JWTs
+- `MAILTRAP_TOKEN` - Mailtrap API token for email sending
 - `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET` - Stripe integration
 - `FLUTTERWAVE_API_KEY`, `FLUTTERWAVE_SECRET_HASH` - Flutterwave integration
+- `GEMINI_API_KEY` - Gemini AI for financial assistant
+
+## Deployment
+
+### Infrastructure (Azure)
+- **Backend**: Azure Container Apps (`wavesend-backend` in `wavesend-rg`)
+- **Database**: Azure Database for PostgreSQL
+- **Cache**: Azure Cache for Redis (SSL on port 6380)
+- **Messaging**: Azure Event Hubs (Kafka-compatible)
+- **Registry**: Azure Container Registry (`wavesendacr2026`)
+- **Frontend**: Cloudflare Pages (from GitHub repo)
+- **Domain**: app.wavesend.cc (frontend), backend accessed via Container Apps FQDN
+
+### Backend Deployment Steps
+```bash
+# 1. Compile and verify
+./mvnw compile -q
+
+# 2. Login to Azure Container Registry
+TOKEN=$(az acr login -n wavesendacr2026 --expose-token --query accessToken -o tsv)
+
+# 3. Build and push Docker image with Jib (increment version!)
+./mvnw compile jib:build \
+  -Ddocker.image.tag=<VERSION> \
+  -Djib.to.image=wavesendacr2026.azurecr.io/wavesend-backend:<VERSION> \
+  "-Djib.to.auth.username=00000000-0000-0000-0000-000000000000" \
+  "-Djib.to.auth.password=$TOKEN"
+
+# 4. Deploy to Azure Container Apps
+az containerapp update \
+  --name wavesend-backend \
+  --resource-group wavesend-rg \
+  --image wavesendacr2026.azurecr.io/wavesend-backend:<VERSION>
+
+# 5. Verify health
+curl -s https://wavesend-backend.nicegrass-8402cffd.centralus.azurecontainerapps.io/api/v1/health
+```
+
+### Frontend Deployment
+The frontend auto-deploys via Cloudflare Pages on push to `main` branch of the frontend repo.
+```bash
+cd ../frontend/angular/money-transfer
+git add -A && git commit -m "message" && git push origin main
+# Cloudflare Pages picks up the push and deploys automatically
+```
+
+### Updating Azure Environment Variables
+```bash
+az containerapp update \
+  --name wavesend-backend \
+  --resource-group wavesend-rg \
+  --set-env-vars "VAR_NAME=value"
+```
+
+### Checking Logs
+```bash
+az containerapp logs show --name wavesend-backend --resource-group wavesend-rg --tail 50 --follow false
+```
+
+### Current Version
+Check current deployed version:
+```bash
+az containerapp show --name wavesend-backend --resource-group wavesend-rg \
+  --query properties.template.containers[0].image -o tsv
+```
+
+## End-to-End Workflow: Implementing a Feature or Fix
+
+### Step 1: Understand the change
+- Identify if it's backend-only, frontend-only, or both
+- Check the relevant service/component files
+
+### Step 2: Implement backend changes
+- Edit source files in `src/main/java/com/shizzy/moneytransfer/`
+- Profile for Azure: `src/main/resources/application-azure.yml`
+- Compile check: `./mvnw compile -q`
+
+### Step 3: Implement frontend changes
+- Frontend location: `../frontend/angular/money-transfer/src/app/`
+- Key directories:
+  - `components/` - Page components (login, register, activate-account)
+  - `modules/account/` - Authenticated pages (dashboard, transactions, settings)
+  - `services/auth/` - AuthService, auth models
+  - `services/interceptor/` - HTTP interceptor (attaches JWT, handles 401 refresh)
+  - `services/token/` - Token storage (localStorage)
+  - `services/inactivity/` - Session timeout monitoring
+
+### Step 4: Commit and push
+```bash
+# Backend
+git add -A && git commit -m "description" && git push origin main
+
+# Frontend (separate repo!)
+cd ../frontend/angular/money-transfer
+git add -A && git commit -m "description" && git push origin main
+```
+
+### Step 5: Deploy backend
+```bash
+TOKEN=$(az acr login -n wavesendacr2026 --expose-token --query accessToken -o tsv)
+./mvnw compile jib:build -Ddocker.image.tag=<VER> -Djib.to.image=wavesendacr2026.azurecr.io/wavesend-backend:<VER> "-Djib.to.auth.username=00000000-0000-0000-0000-000000000000" "-Djib.to.auth.password=$TOKEN"
+az containerapp update --name wavesend-backend --resource-group wavesend-rg --image wavesendacr2026.azurecr.io/wavesend-backend:<VER>
+```
+
+### Step 6: Verify
+```bash
+# Health check
+curl -s https://wavesend-backend.nicegrass-8402cffd.centralus.azurecontainerapps.io/api/v1/health
+
+# Check logs for errors
+az containerapp logs show --name wavesend-backend --resource-group wavesend-rg --tail 30 --follow false
+```
+
+## Frontend Architecture (Angular)
+
+### Key Files
+- `app-routing.module.ts` - Routes (login, register, activate-account, account/*)
+- `app.module.ts` - Root module declarations and imports
+- `modules/account/account.module.ts` - All authenticated pages
+- `modules/account/pages/main/main.component.*` - Layout wrapper (header + footer + inactivity modal)
+- `environments/environment.prod.ts` - Production API URL
+
+### Auth Flow
+1. Login → backend returns `accessToken` + `refreshToken`
+2. Tokens stored in localStorage via `TokenService`
+3. `HttpTokenInterceptor` attaches Bearer token to all API requests
+4. On 401 → interceptor attempts refresh via `/auth/refresh-token`
+5. If refresh fails → `AuthService.logout()` clears tokens and redirects to /login
+6. `InactivityService` monitors user activity, shows timeout modal after 3 min
+
+### Registration & Activation Flow
+1. User registers → backend sends 6-digit code via Mailtrap
+2. Frontend navigates to `/activate-account?email=...`
+3. User enters code → `GET /auth/activate-account?token=123456`
+4. If user tries to login before activating → backend resends code, frontend redirects to activation page
+
+### Important Frontend Patterns
+- HTTP interceptor checks `request.url.startsWith(environment.apiUrl)` to attach tokens
+- `@Primary` on `MailtrapEmailService` means it's used everywhere unless `@Qualifier` overrides
+- All email services must use `@Qualifier("mailtrapEmailService")` — Brevo is deprecated/removed
 
 ## Common Pitfalls
 - Scheduled transfer publisher requires Kafka to be running; startup will fail if broker is unavailable
-- Keycloak JWT validation requires issuer URI to be reachable from the app
 - Redis connection failures cause cache operations to fall back to database (check logs)
 - Flyway baseline is enabled; first migration on existing DB won't fail
-- The `event-listener` Maven profile builds a separate JAR for Keycloak deployment - don't confuse with main application JAR
+- ACR token expires quickly — always re-obtain before `jib:build`
+- Docker daemon not required — Jib pushes directly to registry. Use `--expose-token` for auth
+- Frontend interceptor must match `environment.apiUrl` — hardcoded URL patterns will break in different environments
+- Spring Security's `AuthenticationManager.authenticate()` throws `DisabledException` for disabled users BEFORE your code runs — handle in catch block, not after authenticate()
+- Never expose internal DB IDs to users or AI context — use user-facing identifiers
+- `deploy-containerapp.sh` contains secrets — it's in .gitignore, never commit it
