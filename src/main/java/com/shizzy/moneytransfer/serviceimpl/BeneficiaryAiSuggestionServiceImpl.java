@@ -190,7 +190,7 @@ public class BeneficiaryAiSuggestionServiceImpl implements BeneficiaryAiSuggesti
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ApiResponse<List<BeneficiaryAiSuggestion>> getUserSuggestions(String userId) {
         List<BeneficiaryAiSuggestion> suggestions = suggestionRepository
                 .findByUserIdAndDismissedFalseAndExpiresAtAfter(userId, LocalDateTime.now());

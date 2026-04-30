@@ -2,11 +2,12 @@ package com.shizzy.moneytransfer.controller;
 
 import com.shizzy.moneytransfer.api.ApiResponse;
 import com.shizzy.moneytransfer.model.BeneficiaryAiSuggestion;
+import com.shizzy.moneytransfer.model.User;
 import com.shizzy.moneytransfer.service.BeneficiaryAiSuggestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,20 +22,20 @@ public class BeneficiaryAiSuggestionController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BeneficiaryAiSuggestion>>> getUserSuggestions(
-            Authentication authentication) {
-        return ResponseEntity.ok(suggestionService.getUserSuggestions(authentication.getName()));
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(suggestionService.getUserSuggestions(user.getUserId().toString()));
     }
 
     @PostMapping("/{suggestionId}/dismiss")
     public ResponseEntity<ApiResponse<String>> dismissSuggestion(
-            @PathVariable Long suggestionId, Authentication authentication) {
+            @PathVariable Long suggestionId, @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(suggestionService.dismissSuggestion(
-                authentication.getName(), suggestionId));
+                user.getUserId().toString(), suggestionId));
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<ApiResponse<String>> generateSuggestions(Authentication authentication) {
-        suggestionService.generateSuggestionsForUser(authentication.getName());
+    public ResponseEntity<ApiResponse<String>> generateSuggestions(@AuthenticationPrincipal User user) {
+        suggestionService.generateSuggestionsForUser(user.getUserId().toString());
         
         return ResponseEntity.accepted().body(
                 ApiResponse.<String>builder()
